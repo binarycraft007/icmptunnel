@@ -64,6 +64,8 @@ int server(struct options *options)
         &handle_tunnel_data,
         &handle_timeout
     };
+    int ret = 1;
+
     opts = options;
 
     /* calculate the required icmp payload size. */
@@ -71,24 +73,26 @@ int server(struct options *options)
 
     /* open an echo socket. */
     if (open_echo_skt(&skt, bufsize) != 0)
-        return 1;
+        goto err_out;
 
     /* open a tunnel interface. */
     if (open_tun_device(&device, options->mtu) != 0)
-        return 1;
+        goto err_close_skt;
 
     /* fork and run as a daemon if needed. */
     if (options->daemon) {
         if (daemon() != 0)
-            return 1;
+            goto err_close_tun;
     }
 
     /* run the packet forwarding loop. */
-    int ret = forward(&skt, &device, &handlers);
+    ret = forward(&skt, &device, &handlers);
 
+err_close_tun:
     close_tun_device(&device);
+err_close_skt:
     close_echo_skt(&skt);
-
+err_out:
     return ret;
 }
 

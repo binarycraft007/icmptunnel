@@ -64,6 +64,8 @@ int client(const char *hostname, struct options *options)
         &handle_tunnel_data,
         &handle_timeout
     };
+    int ret = 1;
+
     opts = options;
 
     /* calculate the required icmp payload size. */
@@ -71,15 +73,15 @@ int client(const char *hostname, struct options *options)
 
     /* resolve the server hostname. */
     if (resolve(hostname, &server.linkip) != 0)
-        return 1;
+        goto err_out;
 
     /* open an echo socket. */
     if (open_echo_skt(&skt, bufsize) != 0)
-        return 1;
+        goto err_out;
 
     /* open a tunnel interface. */
     if (open_tun_device(&device, options->mtu) != 0)
-        return 1;
+        goto err_close_skt;
 
     /* choose initial icmp id and sequence numbers. */
     server.nextid = rand();
@@ -89,11 +91,12 @@ int client(const char *hostname, struct options *options)
     send_connection_request(&skt, &server, opts->emulation);
 
     /* run the packet forwarding loop. */
-    int ret = forward(&skt, &device, &handlers);
+    ret = forward(&skt, &device, &handlers);
 
     close_tun_device(&device);
+err_close_skt:
     close_echo_skt(&skt);
-
+err_out:
     return ret;
 }
 
