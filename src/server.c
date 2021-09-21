@@ -42,9 +42,6 @@
 /* the client. */
 static struct peer client;
 
-/* program options. */
-static struct options *opts;
-
 /* handle an icmp packet. */
 static void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device);
 
@@ -54,7 +51,7 @@ static void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device);
 /* handle a timeout. */
 static void handle_timeout(struct echo_skt *skt);
 
-int server(struct options *options)
+int server(void)
 {
     struct echo_skt skt;
     struct tun_device device;
@@ -66,21 +63,19 @@ int server(struct options *options)
     };
     int ret = 1;
 
-    opts = options;
-
     /* calculate the required icmp payload size. */
-    int bufsize = options->mtu + sizeof(struct packet_header);
+    int bufsize = opts->mtu + sizeof(struct packet_header);
 
     /* open an echo socket. */
     if (open_echo_skt(&skt, bufsize) != 0)
         goto err_out;
 
     /* open a tunnel interface. */
-    if (open_tun_device(&device, options->mtu) != 0)
+    if (open_tun_device(&device, opts->mtu) != 0)
         goto err_close_skt;
 
     /* fork and run as a daemon if needed. */
-    if (options->daemon) {
+    if (opts->daemon) {
         if (daemon() != 0)
             goto err_close_tun;
     }

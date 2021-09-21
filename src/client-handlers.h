@@ -28,7 +28,6 @@
 #define ICMPTUNNEL_CLIENT_HANDLERS_H
 
 struct peer;
-struct options;
 struct echo_skt;
 struct tun_device;
 
@@ -42,7 +41,7 @@ void send_punchthru(struct echo_skt *skt, struct peer *server, int emulation);
 void send_keep_alive(struct echo_skt *skt, struct peer *server, int emulation);
 
 /* handle a connection accept packet. */
-void handle_connection_accept(struct echo_skt *skt, struct peer *server, struct options *opts);
+void handle_connection_accept(struct echo_skt *skt, struct peer *server);
 
 /* handle a server full packet. */
 void handle_server_full(struct peer *server);

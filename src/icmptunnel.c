@@ -87,19 +87,19 @@ static void signalhandler(int sig)
     stop();
 }
 
+struct options opts = {
+    ICMPTUNNEL_TIMEOUT,
+    ICMPTUNNEL_RETRIES,
+    ICMPTUNNEL_MTU,
+    ICMPTUNNEL_EMULATION,
+    ICMPTUNNEL_DAEMON
+};
+
 int main(int argc, char *argv[])
 {
     char *program = argv[0];
     char *hostname = NULL;
     int servermode = 0;
-
-    struct options options = {
-        ICMPTUNNEL_TIMEOUT,
-        ICMPTUNNEL_RETRIES,
-        ICMPTUNNEL_MTU,
-        ICMPTUNNEL_EMULATION,
-        ICMPTUNNEL_DAEMON
-    };
 
     /* parse the option arguments. */
     opterr = 0;
@@ -113,29 +113,29 @@ int main(int argc, char *argv[])
             help(program);
             break;
         case 'k':
-            options.keepalive = atoi(optarg);
-            if (!options.keepalive)
-                options.keepalive = 1;
+            opts.keepalive = atoi(optarg);
+            if (!opts.keepalive)
+                opts.keepalive = 1;
             break;
         case 'r':
             if (!strcmp(optarg, "infinite"))
-                options.retries = -1;
+                opts.retries = -1;
             else
-                options.retries = atoi(optarg);
+                opts.retries = atoi(optarg);
             break;
         case 'm':
-            options.mtu = atoi(optarg);
-            if (options.mtu < ETH_MIN_MTU || options.mtu > ETH_MAX_MTU) {
+            opts.mtu = atoi(optarg);
+            if (opts.mtu < ETH_MIN_MTU || opts.mtu > ETH_MAX_MTU) {
                 fprintf(stderr, "for -m option mtu must be within %u ... %u range\n",
                         ETH_MIN_MTU, ETH_MAX_MTU);
                 exit(1);
             }
             break;
         case 'e':
-            options.emulation = 1;
+            opts.emulation = 1;
             break;
         case 'd':
-            options.daemon = 1;
+            opts.daemon = 1;
             break;
         case 's':
             servermode = 1;
@@ -186,9 +186,9 @@ int main(int argc, char *argv[])
 
     if (servermode) {
         /* run the server. */
-        return server(&options);
+        return server();
     }
 
     /* run the client. */
-    return client(hostname, &options);
+    return client(hostname);
 }

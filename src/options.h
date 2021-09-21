@@ -45,4 +45,6 @@ struct options
     unsigned int daemon;
 };
 
+extern struct options opts;
+
 #endif

@@ -87,7 +87,7 @@ void send_keep_alive(struct echo_skt *skt, struct peer *server, int emulation)
     send_echo(skt, server->linkip, &request);
 }
 
-void handle_connection_accept(struct echo_skt *skt, struct peer *server, struct options *opts)
+void handle_connection_accept(struct echo_skt *skt, struct peer *server)
 {
     int i;
 

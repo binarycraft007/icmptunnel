@@ -42,9 +42,6 @@
 /* the server. */
 static struct peer server;
 
-/* program options. */
-static struct options *opts;
-
 /* handle an icmp packet. */
 static void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device);
 
@@ -54,7 +51,7 @@ static void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device);
 /* handle a timeout. */
 static void handle_timeout(struct echo_skt *skt);
 
-int client(const char *hostname, struct options *options)
+int client(const char *hostname)
 {
     struct echo_skt skt;
     struct tun_device device;
@@ -66,10 +63,8 @@ int client(const char *hostname, struct options *options)
     };
     int ret = 1;
 
-    opts = options;
-
     /* calculate the required icmp payload size. */
-    int bufsize = options->mtu + sizeof(struct packet_header);
+    int bufsize = opts->mtu + sizeof(struct packet_header);
 
     /* resolve the server hostname. */
     if (resolve(hostname, &server.linkip) != 0)
@@ -80,7 +75,7 @@ int client(const char *hostname, struct options *options)
         goto err_out;
 
     /* open a tunnel interface. */
-    if (open_tun_device(&device, options->mtu) != 0)
+    if (open_tun_device(&device, opts->mtu) != 0)
         goto err_close_skt;
 
     /* choose initial icmp id and sequence numbers. */
@@ -130,7 +125,7 @@ void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device)
     switch (header->type) {
     case PACKET_CONNECTION_ACCEPT:
         /* handle a connection accept packet. */
-        handle_connection_accept(skt, &server, opts);
+        handle_connection_accept(skt, &server);
         break;
 
     case PACKET_SERVER_FULL:
