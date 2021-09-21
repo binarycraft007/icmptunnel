@@ -98,6 +98,7 @@ void handle_keep_alive_request(struct echo_skt *skt, struct peer *client, struct
 
     send_echo(skt, sourceip, &response);
 
+    client->seconds = 0;
     client->timeouts = 0;
 }
 

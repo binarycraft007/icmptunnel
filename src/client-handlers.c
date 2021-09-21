@@ -140,6 +140,7 @@ void handle_client_data(struct echo_skt *skt, struct tun_device *device,
     /* write the frame to the tunnel interface. */
     write_tun_device(device, skt->data + sizeof(struct packet_header), framesize);
 
+    server->seconds = 0;
     server->timeouts = 0;
 }
 
