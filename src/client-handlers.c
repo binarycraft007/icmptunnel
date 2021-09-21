@@ -89,6 +89,8 @@ void send_keep_alive(struct echo_skt *skt, struct peer *server, int emulation)
 
 void handle_connection_accept(struct echo_skt *skt, struct peer *server, struct options *opts)
 {
+    int i;
+
     /* if we're already connected then ignore the packet. */
     if (server->connected)
         return;
@@ -105,8 +107,7 @@ void handle_connection_accept(struct echo_skt *skt, struct peer *server, struct 
     }
 
     /* send the initial punch-thru packets. */
-    int i;
-    for (i = 0; i < 10; ++i) {
+    for (i = 0; i < ICMPTUNNEL_PUNCHTHRU_WINDOW; i++) {
         send_punchthru(skt, server, opts->emulation);
     }
 }
