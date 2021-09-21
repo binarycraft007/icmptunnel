@@ -58,6 +58,7 @@ int open_tun_device(struct tun_device *device, int mtu)
 
     /* copy out the device name and mtu. */
     strncpy(device->name, ifr.ifr_name, sizeof(device->name));
+    device->name[sizeof(device->name) - 1] = '\0';
     device->mtu = mtu;
 
     /* set mtu on tunnel interface. */
