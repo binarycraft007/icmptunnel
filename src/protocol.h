@@ -44,7 +44,7 @@ enum PACKET_TYPE
 
 struct packet_header
 {
-    uint8_t magic[4];
+    uint8_t magic[sizeof(PACKET_MAGIC) - 1];
     uint8_t type;
 };
 
