@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
     signal(SIGINT, signalhandler);
     signal(SIGTERM, signalhandler);
 
-    srand(time(NULL));
+    srand(getpid() + (time(NULL) % getppid()));
 
     if (servermode) {
         /* run the server. */
