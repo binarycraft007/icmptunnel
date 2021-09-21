@@ -29,9 +29,14 @@
 
 #include <stdint.h>
 #include "config.h"
+#include "echo-skt.h"
+#include "tun-device.h"
 
 struct peer
 {
+    struct echo_skt skt;
+    struct tun_device device;
+
     int connected;
 
     /* link address. */

@@ -29,21 +29,17 @@
 
 struct peer;
 struct echo;
-struct echo_skt;
+
+/* handle a data packet. */
+void handle_server_data(struct peer *client, struct echo *request);
+
+/* handle a keep-alive request packet. */
+void handle_keep_alive_request(struct peer *client, struct echo *request);
 
 /* handle a connection request packet. */
-void handle_connection_request(struct echo_skt *skt,
-    struct peer *client, struct echo *request);
+void handle_connection_request(struct peer *client, struct echo *request);
 
 /* handle a punch-thru packet. */
 void handle_punchthru(struct peer *client, struct echo *request);
-
-/* handle a keep-alive request packet. */
-void handle_keep_alive_request(struct echo_skt *skt,
-    struct peer *client, struct echo *request);
-
-/* handle a data packet. */
-void handle_server_data(struct echo_skt *skt, struct tun_device *devuce,
-    struct peer *client, struct echo *request);
 
 #endif

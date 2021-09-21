@@ -36,100 +36,11 @@
 #include "forwarder.h"
 #include "client-handlers.h"
 
-void send_connection_request(struct echo_skt *skt, struct peer *server)
+void handle_client_data(struct peer *server, struct echo *echo)
 {
-    /* write a connection request packet. */
-    struct packet_header *header = (struct packet_header*)skt->data;
-    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
-    header->type = PACKET_CONNECTION_REQUEST;
+    struct echo_skt *skt = &server->skt;
+    struct tun_device *device = &server->device;
 
-    /* send the request. */
-    struct echo request;
-    request.size = sizeof(struct packet_header);
-    request.reply = 0;
-    request.id = server->nextid;
-    request.seq = opts.emulation ? server->nextseq : server->nextseq++;
-    request.targetip = server->linkip;
-
-    send_echo(skt, &request);
-}
-
-void send_punchthru(struct echo_skt *skt, struct peer *server)
-{
-    /* write a punchthru packet. */
-    struct packet_header *header = (struct packet_header*)skt->data;
-    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
-    header->type = PACKET_PUNCHTHRU;
-
-    /* send the packet. */
-    struct echo request;
-    request.size = sizeof(struct packet_header);
-    request.reply = 0;
-    request.id = server->nextid;
-    request.seq = opts.emulation ? server->nextseq : server->nextseq++;
-    request.targetip = server->linkip;
-
-    send_echo(skt, &request);
-}
-
-void send_keep_alive(struct echo_skt *skt, struct peer *server)
-{
-    /* write a keep-alive request packet. */
-    struct packet_header *header = (struct packet_header*)skt->data;
-    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
-    header->type = PACKET_KEEP_ALIVE;
-
-    /* send the request. */
-    struct echo request;
-    request.size = sizeof(struct packet_header);
-    request.reply = 0;
-    request.id = server->nextid;
-    request.seq = opts.emulation ? server->nextseq : server->nextseq++;
-    request.targetip = server->linkip;
-
-    send_echo(skt, &request);
-}
-
-void handle_connection_accept(struct echo_skt *skt, struct peer *server)
-{
-    int i;
-
-    /* if we're already connected then ignore the packet. */
-    if (server->connected)
-        return;
-
-    fprintf(stderr, "connection established.\n");
-
-    server->connected = 1;
-    server->timeouts = 0;
-
-    /* fork and run as a daemon if needed. */
-    if (opts.daemon) {
-        if (daemon() != 0)
-            return;
-    }
-
-    /* send the initial punch-thru packets. */
-    for (i = 0; i < ICMPTUNNEL_PUNCHTHRU_WINDOW; i++) {
-        send_punchthru(skt, server);
-    }
-}
-
-void handle_server_full(struct peer *server)
-{
-    /* if we're already connected then ignore the packet. */
-    if (server->connected)
-        return;
-
-    fprintf(stderr, "unable to connect: server is full.\n");
-
-    /* stop the packet forwarding loop. */
-    stop();
-}
-
-void handle_client_data(struct echo_skt *skt, struct tun_device *device,
-    struct peer *server, struct echo *echo)
-{
     /* if we're not connected then drop the packet. */
     if (!server->connected)
         return;
@@ -155,4 +66,62 @@ void handle_keep_alive_response(struct peer *server)
 
     server->seconds = 0;
     server->timeouts = 0;
+}
+
+void handle_connection_accept(struct peer *server)
+{
+    int i;
+
+    /* if we're already connected then ignore the packet. */
+    if (server->connected)
+        return;
+
+    fprintf(stderr, "connection established.\n");
+
+    server->connected = 1;
+    server->seconds = 0;
+    server->timeouts = 0;
+
+    /* fork and run as a daemon if needed. */
+    if (opts.daemon) {
+        if (daemon() != 0)
+            return;
+    }
+
+    /* send the initial punch-thru packets. */
+    for (i = 0; i < ICMPTUNNEL_PUNCHTHRU_WINDOW; i++) {
+        send_punchthru(server);
+    }
+}
+
+void handle_server_full(struct peer *server)
+{
+    /* if we're already connected then ignore the packet. */
+    if (server->connected)
+        return;
+
+    fprintf(stderr, "unable to connect: server is full.\n");
+
+    /* stop the packet forwarding loop. */
+    stop();
+}
+
+void send_message(struct peer *server, int pkttype)
+{
+    struct echo_skt *skt = &server->skt;
+
+    /* write a connection request packet. */
+    struct packet_header *header = (struct packet_header*)skt->data;
+    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
+    header->type = pkttype;
+
+    /* send the request. */
+    struct echo request;
+    request.size = sizeof(struct packet_header);
+    request.reply = 0;
+    request.id = server->nextid;
+    request.seq = opts.emulation ? server->nextseq : server->nextseq++;
+    request.targetip = server->linkip;
+
+    send_echo(skt, &request);
 }

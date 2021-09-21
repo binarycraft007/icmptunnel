@@ -39,64 +39,9 @@
 #include "forwarder.h"
 #include "client-handlers.h"
 
-/* the server. */
-static struct peer server;
-
-/* handle an icmp packet. */
-static void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device);
-
-/* handle data from the tunnel interface. */
-static void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device);
-
-/* handle a timeout. */
-static void handle_timeout(struct echo_skt *skt);
-
-int client(const char *hostname)
+static void handle_icmp_packet(struct peer *server)
 {
-    struct echo_skt skt;
-    struct tun_device device;
-
-    struct handlers handlers = {
-        &handle_icmp_packet,
-        &handle_tunnel_data,
-        &handle_timeout
-    };
-    int ret = 1;
-
-    /* calculate the required icmp payload size. */
-    int bufsize = opts.mtu + sizeof(struct packet_header);
-
-    /* resolve the server hostname. */
-    if (resolve(hostname, &server.linkip) != 0)
-        goto err_out;
-
-    /* open an echo socket. */
-    if (open_echo_skt(&skt, bufsize) != 0)
-        goto err_out;
-
-    /* open a tunnel interface. */
-    if (open_tun_device(&device, opts.mtu) != 0)
-        goto err_close_skt;
-
-    /* choose initial icmp id and sequence numbers. */
-    server.nextid = rand();
-    server.nextseq = rand();
-
-    /* send the initial connection request. */
-    send_connection_request(&skt, &server);
-
-    /* run the packet forwarding loop. */
-    ret = forward(&skt, &device, &handlers);
-
-    close_tun_device(&device);
-err_close_skt:
-    close_echo_skt(&skt);
-err_out:
-    return ret;
-}
-
-void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device)
-{
+    struct echo_skt *skt = &server->skt;
     struct echo echo;
 
     /* receive the packet. */
@@ -104,7 +49,7 @@ void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device)
         return;
 
     /* we're only expecting packets from the server. */
-    if (echo.sourceip != server.linkip)
+    if (echo.sourceip != server->linkip)
         return;
 
     /* we're only expecting echo replies. */
@@ -122,30 +67,32 @@ void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device)
         return;
 
     switch (header->type) {
-    case PACKET_CONNECTION_ACCEPT:
-        /* handle a connection accept packet. */
-        handle_connection_accept(skt, &server);
-        break;
-
-    case PACKET_SERVER_FULL:
-        /* handle a server full packet. */
-        handle_server_full(&server);
-        break;
-
     case PACKET_DATA:
         /* handle a data packet. */
-        handle_client_data(skt, device, &server, &echo);
+        handle_client_data(server, &echo);
         break;
 
     case PACKET_KEEP_ALIVE:
         /* handle a keep-alive packet. */
-        handle_keep_alive_response(&server);
+        handle_keep_alive_response(server);
+        break;
+
+    case PACKET_CONNECTION_ACCEPT:
+        /* handle a connection accept packet. */
+        handle_connection_accept(server);
+        break;
+
+    case PACKET_SERVER_FULL:
+        /* handle a server full packet. */
+        handle_server_full(server);
         break;
     }
 }
 
-void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device)
+static void handle_tunnel_data(struct peer *server)
 {
+    struct echo_skt *skt = &server->skt;
+    struct tun_device *device = &server->device;
     int size;
 
     /* read the frame. */
@@ -153,7 +100,7 @@ void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device)
         return;
 
     /* if we're not connected then drop the frame. */
-    if (!server.connected)
+    if (!server->connected)
         return;
 
     /* write a data packet. */
@@ -165,24 +112,24 @@ void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device)
     struct echo echo;
     echo.size = sizeof(struct packet_header) + size;
     echo.reply = 0;
-    echo.id = server.nextid;
-    echo.seq = opts.emulation ? server.nextseq : server.nextseq++;
-    echo.targetip = server.linkip;
+    echo.id = server->nextid;
+    echo.seq = opts.emulation ? server->nextseq : server->nextseq++;
+    echo.targetip = server->linkip;
 
     send_echo(skt, &echo);
 }
 
-void handle_timeout(struct echo_skt *skt)
+static void handle_timeout(struct peer *server)
 {
     /* send a punch-thru packet. */
-    send_punchthru(skt, &server);
+    send_punchthru(server);
 
     /* has the peer timeout elapsed? */
-    if (++server.seconds == opts.keepalive) {
-        server.seconds = 0;
+    if (++server->seconds == opts.keepalive) {
+        server->seconds = 0;
 
         /* have we reached the max number of retries? */
-        if (opts.retries != -1 && ++server.timeouts == opts.retries) {
+        if (opts.retries != -1 && ++server->timeouts == opts.retries) {
             fprintf(stderr, "connection timed out.\n");
 
             /* stop the packet forwarding loop. */
@@ -191,12 +138,64 @@ void handle_timeout(struct echo_skt *skt)
         }
 
         /* if we're still connecting, resend the connection request. */
-        if (!server.connected) {
-            send_connection_request(skt, &server);
+        if (!server->connected) {
+            send_connection_request(server);
             return;
         }
 
         /* otherwise, send a keep-alive request. */
-        send_keep_alive(skt, &server);
+        send_keep_alive(server);
     }
+}
+
+static const struct handlers handlers = {
+    handle_icmp_packet,
+    handle_tunnel_data,
+    handle_timeout,
+};
+
+int client(const char *hostname)
+{
+    struct peer server;
+    struct echo_skt *skt = &server.skt;
+    struct tun_device *device = &server.device;
+    int ret = 1;
+
+    /* calculate the required icmp payload size. */
+    int bufsize = opts.mtu + sizeof(struct packet_header);
+
+    /* resolve the server hostname. */
+    if (resolve(hostname, &server.linkip) != 0)
+        goto err_out;
+
+    /* open an echo socket. */
+    if (open_echo_skt(skt, bufsize) != 0)
+        goto err_out;
+
+    /* open a tunnel interface. */
+    if (open_tun_device(device, opts.mtu) != 0)
+        goto err_close_skt;
+
+    /* choose initial icmp id and sequence numbers. */
+    server.nextid = rand();
+    server.nextseq = rand();
+
+    /* mark as not connected to server. */
+    server.connected = 0;
+
+    /* initialize keepalive seconds and timeout retries. */
+    server.seconds = 0;
+    server.timeouts = 0;
+
+    /* send the initial connection request. */
+    send_connection_request(&server);
+
+    /* run the packet forwarding loop. */
+    ret = forward(&server, &handlers);
+
+    close_tun_device(device);
+err_close_skt:
+    close_echo_skt(skt);
+err_out:
+    return ret;
 }

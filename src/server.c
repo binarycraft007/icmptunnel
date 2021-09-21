@@ -39,60 +39,9 @@
 #include "forwarder.h"
 #include "server-handlers.h"
 
-/* the client. */
-static struct peer client;
-
-/* handle an icmp packet. */
-static void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device);
-
-/* handle data from the tunnel interface. */
-static void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device);
-
-/* handle a timeout. */
-static void handle_timeout(struct echo_skt *skt);
-
-int server(void)
+static void handle_icmp_packet(struct peer *client)
 {
-    struct echo_skt skt;
-    struct tun_device device;
-
-    struct handlers handlers = {
-        &handle_icmp_packet,
-        &handle_tunnel_data,
-        &handle_timeout
-    };
-    int ret = 1;
-
-    /* calculate the required icmp payload size. */
-    int bufsize = opts.mtu + sizeof(struct packet_header);
-
-    /* open an echo socket. */
-    if (open_echo_skt(&skt, bufsize) != 0)
-        goto err_out;
-
-    /* open a tunnel interface. */
-    if (open_tun_device(&device, opts.mtu) != 0)
-        goto err_close_skt;
-
-    /* fork and run as a daemon if needed. */
-    if (opts.daemon) {
-        if (daemon() != 0)
-            goto err_close_tun;
-    }
-
-    /* run the packet forwarding loop. */
-    ret = forward(&skt, &device, &handlers);
-
-err_close_tun:
-    close_tun_device(&device);
-err_close_skt:
-    close_echo_skt(&skt);
-err_out:
-    return ret;
-}
-
-void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device)
-{
+    struct echo_skt *skt = &client->skt;
     struct echo echo;
 
     /* receive the packet. */
@@ -114,30 +63,32 @@ void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device)
         return;
 
     switch (header->type) {
-    case PACKET_CONNECTION_REQUEST:
-        /* handle a connection request packet. */
-        handle_connection_request(skt, &client, &echo);
-        break;
-
     case PACKET_DATA:
         /* handle a data packet. */
-        handle_server_data(skt, device, &client, &echo);
-        break;
-
-    case PACKET_PUNCHTHRU:
-        /* handle a punch-thru packet. */
-        handle_punchthru(&client, &echo);
+        handle_server_data(client, &echo);
         break;
 
     case PACKET_KEEP_ALIVE:
         /* handle a keep-alive request packet. */
-        handle_keep_alive_request(skt, &client, &echo);
+        handle_keep_alive_request(client, &echo);
+        break;
+
+    case PACKET_CONNECTION_REQUEST:
+        /* handle a connection request packet. */
+        handle_connection_request(client, &echo);
+        break;
+
+    case PACKET_PUNCHTHRU:
+        /* handle a punch-thru packet. */
+        handle_punchthru(client, &echo);
         break;
     }
 }
 
-void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device)
+static void handle_tunnel_data(struct peer *client)
 {
+    struct echo_skt *skt = &client->skt;
+    struct tun_device *device = &client->device;
     int size;
 
     /* read the frame. */
@@ -145,7 +96,7 @@ void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device)
         return;
 
     /* if no client is connected then drop the frame. */
-    if (!client.connected)
+    if (!client->connected)
         return;
 
     /* write a data packet. */
@@ -157,34 +108,79 @@ void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device)
     struct echo echo;
     echo.size = sizeof(struct packet_header) + size;
     echo.reply = 1;
-    echo.id = client.nextid;
-    echo.seq = client.punchthru[client.nextpunchthru];
-    echo.targetip = client.linkip;
+    echo.id = client->nextid;
+    echo.seq = client->punchthru[client->nextpunchthru];
+    echo.targetip = client->linkip;
 
-    client.nextpunchthru++;
-    client.nextpunchthru %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
+    client->nextpunchthru++;
+    client->nextpunchthru %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
 
     send_echo(skt, &echo);
 }
 
-void handle_timeout(struct echo_skt *skt)
+static void handle_timeout(struct peer *client)
 {
-    /* unused parameter. */
-    (void)skt;
-
-    if (!client.connected)
+    if (!client->connected)
         return;
 
     /* has the peer timeout elapsed? */
-    if (++client.seconds == opts.keepalive) {
-        client.seconds = 0;
+    if (++client->seconds == opts.keepalive) {
+        client->seconds = 0;
 
         /* have we reached the max number of retries? */
-        if (opts.retries != -1 && ++client.timeouts == opts.retries) {
+        if (opts.retries != -1 && ++client->timeouts == opts.retries) {
             fprintf(stderr, "client connection timed out.\n");
 
-            client.connected = 0;
+            client->connected = 0;
             return;
         }
     }
+}
+
+static const struct handlers handlers = {
+    handle_icmp_packet,
+    handle_tunnel_data,
+    handle_timeout,
+};
+
+int server(void)
+{
+    struct peer client;
+    struct echo_skt *skt = &client.skt;
+    struct tun_device *device = &client.device;
+    int ret = 1;
+
+    /* calculate the required icmp payload size. */
+    int bufsize = opts.mtu + sizeof(struct packet_header);
+
+    /* open an echo socket. */
+    if (open_echo_skt(skt, bufsize) != 0)
+        goto err_out;
+
+    /* open a tunnel interface. */
+    if (open_tun_device(device, opts.mtu) != 0)
+        goto err_close_skt;
+
+    /* fork and run as a daemon if needed. */
+    if (opts.daemon) {
+        if (daemon() != 0)
+            goto err_close_tun;
+    }
+
+    /* mark as not connected with client. */
+    client.connected = 0;
+
+    /* initialize keepalive seconds and timeout retries. */
+    client.seconds = 0;
+    client.timeouts = 0;
+
+    /* run the packet forwarding loop. */
+    ret = forward(&client, &handlers);
+
+err_close_tun:
+    close_tun_device(device);
+err_close_skt:
+    close_echo_skt(skt);
+err_out:
+    return ret;
 }

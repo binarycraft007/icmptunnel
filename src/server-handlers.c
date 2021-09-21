@@ -32,17 +32,67 @@
 #include "protocol.h"
 #include "server-handlers.h"
 
-void handle_connection_request(struct echo_skt *skt,
-    struct peer *client, struct echo *request)
+void handle_server_data(struct peer *client, struct echo *request)
 {
+    struct echo_skt *skt = &client->skt;
+    struct tun_device *device = &client->device;
+
+    if (!client->connected || request->sourceip != client->linkip)
+        return;
+
+    /* determine the size of the encapsulated frame. */
+    int framesize = request->size - sizeof(struct packet_header);
+
+    if (!framesize)
+        return;
+
+    /* write the frame to the tunnel interface. */
+    write_tun_device(device, skt->data + sizeof(struct packet_header), framesize);
+
+    /* save the icmp id and sequence numbers for any return traffic. */
+    client->nextid = request->id;
+    client->nextseq = request->seq;
+    client->seconds = 0;
+    client->timeouts = 0;
+}
+
+void handle_keep_alive_request(struct peer *client, struct echo *request)
+{
+    struct echo_skt *skt = &client->skt;
+
+    if (!client->connected || request->sourceip != client->linkip)
+        return;
+
+    /* write a keep-alive response. */
+    struct packet_header *header = (struct packet_header*)skt->data;
+    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
+    header->type = PACKET_KEEP_ALIVE;
+
+    /* send the response to the client. */
+    struct echo response;
+    response.size = sizeof(struct packet_header);
+    response.reply = 1;
+    response.id = request->id;
+    response.seq = request->seq;
+    response.targetip = request->sourceip;
+
+    send_echo(skt, &response);
+
+    client->seconds = 0;
+    client->timeouts = 0;
+}
+
+void handle_connection_request(struct peer *client, struct echo *request)
+{
+    struct echo_skt *skt = &client->skt;
+
     struct packet_header *header = (struct packet_header*)skt->data;
     memcpy(header->magic, PACKET_MAGIC, sizeof(struct packet_header));
 
     /* is a client already connected? */
     if (client->connected) {
         header->type = PACKET_SERVER_FULL;
-    }
-    else {
+    } else {
         header->type = PACKET_CONNECTION_ACCEPT;
 
         client->connected = 1;
@@ -75,53 +125,6 @@ void handle_punchthru(struct peer *client, struct echo *request)
     client->nextpunchthru_write++;
     client->nextpunchthru_write %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
 
-    client->seconds = 0;
-    client->timeouts = 0;
-}
-
-void handle_keep_alive_request(struct echo_skt *skt,
-    struct peer *client, struct echo *request)
-{
-    if (!client->connected || request->sourceip != client->linkip)
-        return;
-
-    /* write a keep-alive response. */
-    struct packet_header *header = (struct packet_header*)skt->data;
-    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
-    header->type = PACKET_KEEP_ALIVE;
-
-    /* send the response to the client. */
-    struct echo response;
-    response.size = sizeof(struct packet_header);
-    response.reply = 1;
-    response.id = request->id;
-    response.seq = request->seq;
-    response.targetip = request->sourceip;
-
-    send_echo(skt, &response);
-
-    client->seconds = 0;
-    client->timeouts = 0;
-}
-
-void handle_server_data(struct echo_skt *skt, struct tun_device *device,
-    struct peer *client, struct echo *request)
-{
-    if (!client->connected || request->sourceip != client->linkip)
-        return;
-
-    /* determine the size of the encapsulated frame. */
-    int framesize = request->size - sizeof(struct packet_header);
-
-    if (!framesize)
-        return;
-
-    /* write the frame to the tunnel interface. */
-    write_tun_device(device, skt->data + sizeof(struct packet_header), framesize);
-
-    /* save the icmp id and sequence numbers for any return traffic. */
-    client->nextid = request->id;
-    client->nextseq = request->seq;
     client->seconds = 0;
     client->timeouts = 0;
 }

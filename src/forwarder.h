@@ -27,12 +27,11 @@
 #ifndef ICMPTUNNEL_FORWARDER_H
 #define ICMPTUNNEL_FORWARDER_H
 
+struct peer;
 struct handlers;
-struct echo_skt;
-struct tun_device;
 
 /* loop and forward packets between the tunnel interface and peer. */
-int forward(struct echo_skt *skt, struct tun_device *device, struct handlers *handlers);
+int forward(struct peer *peer, const struct handlers *handlers);
 
 /* stop the forwarding loop. */
 void stop();

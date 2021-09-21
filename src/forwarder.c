@@ -31,6 +31,7 @@
 #include <sys/select.h>
 
 #include "options.h"
+#include "peer.h"
 #include "handlers.h"
 #include "echo-skt.h"
 #include "tun-device.h"
@@ -39,17 +40,19 @@
 /* are we still running? */
 static int running = 1;
 
-int forward(struct echo_skt *skt, struct tun_device *device, struct handlers *handlers)
+int forward(struct peer *peer, const struct handlers *handlers)
 {
-    int ret;
+    struct echo_skt *skt = &peer->skt;
+    struct tun_device *device = &peer->device;
     int maxfd = skt->fd > device->fd ? skt->fd : device->fd;
-
-    struct timeval timeout;
 
     /* loop and push packets between the tunnel device and peer. */
     while (running) {
+        struct timeval timeout;
+        int ret;
         fd_set fs;
 
+        /* fill fd set */
         FD_ZERO(&fs);
         FD_SET(skt->fd, &fs);
         FD_SET(device->fd, &fs);
@@ -69,17 +72,17 @@ int forward(struct echo_skt *skt, struct tun_device *device, struct handlers *ha
         }
         /* did we time out? */
         else if (ret == 0) {
-            handlers->timeout(skt);
+            handlers->timeout(peer);
         }
 
         /* handle a packet from the echo socket. */
         if (FD_ISSET(skt->fd, &fs)) {
-            handlers->icmp(skt, device);
+            handlers->icmp(peer);
         }
 
         /* handle data from the tunnel device. */
         if (FD_ISSET(device->fd, &fs)) {
-            handlers->tunnel(skt, device);
+            handlers->tunnel(peer);
         }
     }
 

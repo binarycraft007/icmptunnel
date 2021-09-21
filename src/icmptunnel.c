@@ -187,8 +187,8 @@ int main(int argc, char *argv[])
     if (servermode) {
         /* run the server. */
         return server();
+    } else {
+        /* run the client. */
+        return client(hostname);
     }
-
-    /* run the client. */
-    return client(hostname);
 }

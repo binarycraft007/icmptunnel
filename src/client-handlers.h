@@ -28,29 +28,39 @@
 #define ICMPTUNNEL_CLIENT_HANDLERS_H
 
 struct peer;
-struct echo_skt;
-struct tun_device;
+struct echo;
 
-/* send a connection request to the server. */
-void send_connection_request(struct echo_skt *skt, struct peer *server);
+/* handle a data packet. */
+void handle_client_data(struct peer *server, struct echo *echo);
 
-/* send a punchthru packet. */
-void send_punchthru(struct echo_skt *skt, struct peer *server);
-
-/* send a keep-alive request to the server. */
-void send_keep_alive(struct echo_skt *skt, struct peer *server);
+/* handle a keep-alive packet. */
+void handle_keep_alive_response(struct peer *server);
 
 /* handle a connection accept packet. */
-void handle_connection_accept(struct echo_skt *skt, struct peer *server);
+void handle_connection_accept(struct peer *server);
 
 /* handle a server full packet. */
 void handle_server_full(struct peer *server);
 
-/* handle a data packet. */
-void handle_client_data(struct echo_skt *skt, struct tun_device *device, struct peer *server,
-    struct echo *echo);
+/* send a message to the server. */
+void send_message(struct peer *server, int pkttype);
 
-/* handle a keep-alive packet. */
-void handle_keep_alive_response(struct peer *server);
+/* send a connection request to the server. */
+static inline void send_connection_request(struct peer *server)
+{
+    send_message(server, PACKET_CONNECTION_REQUEST);
+}
+
+/* send a punchthru packet. */
+static inline void send_punchthru(struct peer *server)
+{
+    send_message(server, PACKET_PUNCHTHRU);
+}
+
+/* send a keep-alive request to the server. */
+static inline void send_keep_alive(struct peer *server)
+{
+    send_message(server, PACKET_KEEP_ALIVE);
+}
 
 #endif
