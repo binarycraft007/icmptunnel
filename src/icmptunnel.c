@@ -24,6 +24,8 @@
  *  SOFTWARE.
  */
 
+#include <netinet/if_ether.h>
+
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +39,13 @@
 #include "server.h"
 #include "options.h"
 #include "forwarder.h"
+
+#ifndef ETH_MIN_MTU
+#define ETH_MIN_MTU 68
+#endif
+#ifndef ETH_MAX_MTU
+#define ETH_MAX_MTU 0xFFFFU
+#endif
 
 static void version()
 {
@@ -116,6 +125,11 @@ int main(int argc, char *argv[])
             break;
         case 'm':
             options.mtu = atoi(optarg);
+            if (options.mtu < ETH_MIN_MTU || options.mtu > ETH_MAX_MTU) {
+                fprintf(stderr, "for -m option mtu must be within %u ... %u range\n",
+                        ETH_MIN_MTU, ETH_MAX_MTU);
+                exit(1);
+            }
             break;
         case 'e':
             options.emulation = 1;

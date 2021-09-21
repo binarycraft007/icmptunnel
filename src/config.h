@@ -42,8 +42,10 @@
 /* default window size of punch-thru packets. */
 #define ICMPTUNNEL_PUNCHTHRU_WINDOW 10
 
-/* default tunnel mtu in bytes; assume the size of an ethernet frame. */
-#define ICMPTUNNEL_MTU 1500
+/* default tunnel mtu in bytes; assume the size of an ethernet frame
+ * minus ip, icmp and packet header sizes - 1.
+ */
+#define ICMPTUNNEL_MTU (1500 - 20 - 8 - 5 - 1)
 
 /* default to standard linux behaviour, do not emulate windows ping. */
 #define ICMPTUNNEL_EMULATION 0

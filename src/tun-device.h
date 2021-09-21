@@ -33,7 +33,7 @@
 struct tun_device
 {
     int fd;
-    int mtu;
+    unsigned int mtu;
     char name[20];
 };
 

@@ -60,7 +60,21 @@ int open_tun_device(struct tun_device *device, int mtu)
     strncpy(device->name, ifr.ifr_name, sizeof(device->name));
     device->mtu = mtu;
 
-    fprintf(stderr, "opened tunnel device: %s\n", ifr.ifr_name);
+    /* set mtu on tunnel interface. */
+    if (1) {
+        int sk = socket(AF_INET, SOCK_STREAM, 0);
+
+        ifr.ifr_mtu = mtu;
+        if (sk < 0 || ioctl(sk, SIOCSIFMTU, &ifr) < 0) {
+            fprintf(stderr, "unable to set tunnel device %s mtu to %u: %s\n",
+                    device->name, mtu, strerror(errno));
+            return 1;
+        }
+
+        close(sk);
+    }
+
+    fprintf(stderr, "opened tunnel device: %s, mtu: %u\n", device->name, mtu);
 
     return 0;
 }
