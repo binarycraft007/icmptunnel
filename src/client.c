@@ -64,7 +64,7 @@ int client(const char *hostname)
     int ret = 1;
 
     /* calculate the required icmp payload size. */
-    int bufsize = opts->mtu + sizeof(struct packet_header);
+    int bufsize = opts.mtu + sizeof(struct packet_header);
 
     /* resolve the server hostname. */
     if (resolve(hostname, &server.linkip) != 0)
@@ -75,7 +75,7 @@ int client(const char *hostname)
         goto err_out;
 
     /* open a tunnel interface. */
-    if (open_tun_device(&device, opts->mtu) != 0)
+    if (open_tun_device(&device, opts.mtu) != 0)
         goto err_close_skt;
 
     /* choose initial icmp id and sequence numbers. */
@@ -98,14 +98,13 @@ err_out:
 void handle_icmp_packet(struct echo_skt *skt, struct tun_device *device)
 {
     struct echo echo;
-    uint32_t sourceip;
 
     /* receive the packet. */
-    if (receive_echo(skt, &sourceip, &echo) != 0)
+    if (receive_echo(skt, &echo) != 0)
         return;
 
     /* we're only expecting packets from the server. */
-    if (sourceip != server.linkip)
+    if (echo.sourceip != server.linkip)
         return;
 
     /* we're only expecting echo replies. */
@@ -167,9 +166,10 @@ void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device)
     echo.size = sizeof(struct packet_header) + size;
     echo.reply = 0;
     echo.id = server.nextid;
-    echo.seq = opts->emulation ? server.nextseq : server.nextseq++;
+    echo.seq = opts.emulation ? server.nextseq : server.nextseq++;
+    echo.targetip = server.linkip;
 
-    send_echo(skt, server.linkip, &echo);
+    send_echo(skt, &echo);
 }
 
 void handle_timeout(struct echo_skt *skt)
@@ -178,11 +178,11 @@ void handle_timeout(struct echo_skt *skt)
     send_punchthru(skt, &server);
 
     /* has the peer timeout elapsed? */
-    if (++server.seconds == opts->keepalive) {
+    if (++server.seconds == opts.keepalive) {
         server.seconds = 0;
 
         /* have we reached the max number of retries? */
-        if (opts->retries != -1 && ++server.timeouts == opts->retries) {
+        if (opts.retries != -1 && ++server.timeouts == opts.retries) {
             fprintf(stderr, "connection timed out.\n");
 
             /* stop the packet forwarding loop. */

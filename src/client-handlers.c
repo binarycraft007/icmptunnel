@@ -48,9 +48,10 @@ void send_connection_request(struct echo_skt *skt, struct peer *server)
     request.size = sizeof(struct packet_header);
     request.reply = 0;
     request.id = server->nextid;
-    request.seq = opts->emulation ? server->nextseq : server->nextseq++;
+    request.seq = opts.emulation ? server->nextseq : server->nextseq++;
+    request.targetip = server->linkip;
 
-    send_echo(skt, server->linkip, &request);
+    send_echo(skt, &request);
 }
 
 void send_punchthru(struct echo_skt *skt, struct peer *server)
@@ -65,9 +66,10 @@ void send_punchthru(struct echo_skt *skt, struct peer *server)
     request.size = sizeof(struct packet_header);
     request.reply = 0;
     request.id = server->nextid;
-    request.seq = opts->emulation ? server->nextseq : server->nextseq++;
+    request.seq = opts.emulation ? server->nextseq : server->nextseq++;
+    request.targetip = server->linkip;
 
-    send_echo(skt, server->linkip, &request);
+    send_echo(skt, &request);
 }
 
 void send_keep_alive(struct echo_skt *skt, struct peer *server)
@@ -82,9 +84,10 @@ void send_keep_alive(struct echo_skt *skt, struct peer *server)
     request.size = sizeof(struct packet_header);
     request.reply = 0;
     request.id = server->nextid;
-    request.seq = opts->emulation ? server->nextseq : server->nextseq++;
+    request.seq = opts.emulation ? server->nextseq : server->nextseq++;
+    request.targetip = server->linkip;
 
-    send_echo(skt, server->linkip, &request);
+    send_echo(skt, &request);
 }
 
 void handle_connection_accept(struct echo_skt *skt, struct peer *server)
@@ -101,7 +104,7 @@ void handle_connection_accept(struct echo_skt *skt, struct peer *server)
     server->timeouts = 0;
 
     /* fork and run as a daemon if needed. */
-    if (opts->daemon) {
+    if (opts.daemon) {
         if (daemon() != 0)
             return;
     }

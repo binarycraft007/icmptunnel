@@ -43,16 +43,22 @@ struct echo
     int reply;
     uint16_t id;
     uint16_t seq;
+    union {
+        uint32_t sourceip;
+        uint32_t targetip;
+    } u;
+#define sourceip u.sourceip
+#define targetip u.targetip
 };
 
 /* open an icmp echo socket. */
 int open_echo_skt(struct echo_skt *skt, int mtu);
 
 /* send an echo packet. */
-int send_echo(struct echo_skt *skt, uint32_t destip, struct echo *echo);
+int send_echo(struct echo_skt *skt, struct echo *echo);
 
 /* receive an echo packet. */
-int receive_echo(struct echo_skt *skt, uint32_t *sourceip, struct echo *echo);
+int receive_echo(struct echo_skt *skt, struct echo *echo);
 
 /* close the socket. */
 void close_echo_skt(struct echo_skt *skt);

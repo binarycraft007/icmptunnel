@@ -32,8 +32,8 @@
 #include "protocol.h"
 #include "server-handlers.h"
 
-void handle_connection_request(struct echo_skt *skt, struct peer *client,
-    struct echo *request, uint32_t sourceip)
+void handle_connection_request(struct echo_skt *skt,
+    struct peer *client, struct echo *request)
 {
     struct packet_header *header = (struct packet_header*)skt->data;
     memcpy(header->magic, PACKET_MAGIC, sizeof(struct packet_header));
@@ -50,7 +50,7 @@ void handle_connection_request(struct echo_skt *skt, struct peer *client,
         client->timeouts = 0;
         client->nextpunchthru = 0;
         client->nextpunchthru_write = 0;
-        client->linkip = sourceip;
+        client->linkip = request->sourceip;
     }
 
     /* send the response. */
@@ -59,14 +59,15 @@ void handle_connection_request(struct echo_skt *skt, struct peer *client,
     response.reply = 1;
     response.id = request->id;
     response.seq = request->seq;
+    response.targetip = request->sourceip;
 
-    send_echo(skt, sourceip, &response);
+    send_echo(skt, &response);
 }
 
 /* handle a punch-thru packet. */
-void handle_punchthru(struct peer *client, struct echo *request, uint32_t sourceip)
+void handle_punchthru(struct peer *client, struct echo *request)
 {
-    if (!client->connected || sourceip != client->linkip)
+    if (!client->connected || request->sourceip != client->linkip)
         return;
 
     /* store the sequence number. */
@@ -78,10 +79,10 @@ void handle_punchthru(struct peer *client, struct echo *request, uint32_t source
     client->timeouts = 0;
 }
 
-void handle_keep_alive_request(struct echo_skt *skt, struct peer *client, struct echo *request,
-    uint32_t sourceip)
+void handle_keep_alive_request(struct echo_skt *skt,
+    struct peer *client, struct echo *request)
 {
-    if (!client->connected || sourceip != client->linkip)
+    if (!client->connected || request->sourceip != client->linkip)
         return;
 
     /* write a keep-alive response. */
@@ -95,17 +96,18 @@ void handle_keep_alive_request(struct echo_skt *skt, struct peer *client, struct
     response.reply = 1;
     response.id = request->id;
     response.seq = request->seq;
+    response.targetip = request->sourceip;
 
-    send_echo(skt, sourceip, &response);
+    send_echo(skt, &response);
 
     client->seconds = 0;
     client->timeouts = 0;
 }
 
-void handle_server_data(struct echo_skt *skt, struct tun_device *device, struct peer *client,
-    struct echo *request, uint32_t sourceip)
+void handle_server_data(struct echo_skt *skt, struct tun_device *device,
+    struct peer *client, struct echo *request)
 {
-    if (!client->connected || sourceip != client->linkip)
+    if (!client->connected || request->sourceip != client->linkip)
         return;
 
     /* determine the size of the encapsulated frame. */

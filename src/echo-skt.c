@@ -59,13 +59,13 @@ int open_echo_skt(struct echo_skt *skt, int mtu)
     return 0;
 }
 
-int send_echo(struct echo_skt *skt, uint32_t destip, struct echo* echo)
+int send_echo(struct echo_skt *skt, struct echo *echo)
 {
     ssize_t xfer;
 
     struct sockaddr_in dest;
     dest.sin_family = AF_INET;
-    dest.sin_addr.s_addr = htonl(destip);
+    dest.sin_addr.s_addr = htonl(echo->targetip);
     dest.sin_port = 0;  /* for valgrind. */
 
     /* write the icmp header. */
@@ -89,7 +89,7 @@ int send_echo(struct echo_skt *skt, uint32_t destip, struct echo* echo)
     return 0;
 }
 
-int receive_echo(struct echo_skt *skt, uint32_t *sourceip, struct echo *echo)
+int receive_echo(struct echo_skt *skt, struct echo *echo)
 {
     ssize_t xfer;
     struct sockaddr_in source;
@@ -112,12 +112,11 @@ int receive_echo(struct echo_skt *skt, uint32_t *sourceip, struct echo *echo)
     if ((header->type != 0 && header->type != 8) || header->code != 0)
         return 1;  /* unexpected packet type. */
 
-    *sourceip = ntohl(source.sin_addr.s_addr);
-
     echo->size = xfer - sizeof(struct iphdr) - sizeof(struct icmphdr);
     echo->reply = header->type == 0;
     echo->id = ntohs(header->un.echo.id);
     echo->seq = ntohs(header->un.echo.sequence);
+    echo->sourceip = ntohl(source.sin_addr.s_addr);
 
     return 0;
 }
