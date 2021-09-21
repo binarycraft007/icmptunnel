@@ -36,7 +36,7 @@
 #include "forwarder.h"
 #include "client-handlers.h"
 
-void send_connection_request(struct echo_skt *skt, struct peer *server, int emulation)
+void send_connection_request(struct echo_skt *skt, struct peer *server)
 {
     /* write a connection request packet. */
     struct packet_header *header = (struct packet_header*)skt->data;
@@ -48,12 +48,12 @@ void send_connection_request(struct echo_skt *skt, struct peer *server, int emul
     request.size = sizeof(struct packet_header);
     request.reply = 0;
     request.id = server->nextid;
-    request.seq = emulation ? server->nextseq : server->nextseq++;
+    request.seq = opts->emulation ? server->nextseq : server->nextseq++;
 
     send_echo(skt, server->linkip, &request);
 }
 
-void send_punchthru(struct echo_skt *skt, struct peer *server, int emulation)
+void send_punchthru(struct echo_skt *skt, struct peer *server)
 {
     /* write a punchthru packet. */
     struct packet_header *header = (struct packet_header*)skt->data;
@@ -65,12 +65,12 @@ void send_punchthru(struct echo_skt *skt, struct peer *server, int emulation)
     request.size = sizeof(struct packet_header);
     request.reply = 0;
     request.id = server->nextid;
-    request.seq = emulation ? server->nextseq : server->nextseq++;
+    request.seq = opts->emulation ? server->nextseq : server->nextseq++;
 
     send_echo(skt, server->linkip, &request);
 }
 
-void send_keep_alive(struct echo_skt *skt, struct peer *server, int emulation)
+void send_keep_alive(struct echo_skt *skt, struct peer *server)
 {
     /* write a keep-alive request packet. */
     struct packet_header *header = (struct packet_header*)skt->data;
@@ -82,7 +82,7 @@ void send_keep_alive(struct echo_skt *skt, struct peer *server, int emulation)
     request.size = sizeof(struct packet_header);
     request.reply = 0;
     request.id = server->nextid;
-    request.seq = emulation ? server->nextseq : server->nextseq++;
+    request.seq = opts->emulation ? server->nextseq : server->nextseq++;
 
     send_echo(skt, server->linkip, &request);
 }
@@ -108,7 +108,7 @@ void handle_connection_accept(struct echo_skt *skt, struct peer *server)
 
     /* send the initial punch-thru packets. */
     for (i = 0; i < ICMPTUNNEL_PUNCHTHRU_WINDOW; i++) {
-        send_punchthru(skt, server, opts->emulation);
+        send_punchthru(skt, server);
     }
 }
 

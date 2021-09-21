@@ -32,13 +32,13 @@ struct echo_skt;
 struct tun_device;
 
 /* send a connection request to the server. */
-void send_connection_request(struct echo_skt *skt, struct peer *server, int emulation);
+void send_connection_request(struct echo_skt *skt, struct peer *server);
 
 /* send a punchthru packet. */
-void send_punchthru(struct echo_skt *skt, struct peer *server, int emulation);
+void send_punchthru(struct echo_skt *skt, struct peer *server);
 
 /* send a keep-alive request to the server. */
-void send_keep_alive(struct echo_skt *skt, struct peer *server, int emulation);
+void send_keep_alive(struct echo_skt *skt, struct peer *server);
 
 /* handle a connection accept packet. */
 void handle_connection_accept(struct echo_skt *skt, struct peer *server);

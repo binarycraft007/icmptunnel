@@ -83,7 +83,7 @@ int client(const char *hostname)
     server.nextseq = rand();
 
     /* send the initial connection request. */
-    send_connection_request(&skt, &server, opts->emulation);
+    send_connection_request(&skt, &server);
 
     /* run the packet forwarding loop. */
     ret = forward(&skt, &device, &handlers);
@@ -175,7 +175,7 @@ void handle_tunnel_data(struct echo_skt *skt, struct tun_device *device)
 void handle_timeout(struct echo_skt *skt)
 {
     /* send a punch-thru packet. */
-    send_punchthru(skt, &server, opts->emulation);
+    send_punchthru(skt, &server);
 
     /* has the peer timeout elapsed? */
     if (++server.seconds == opts->keepalive) {
@@ -192,11 +192,11 @@ void handle_timeout(struct echo_skt *skt)
 
         /* if we're still connecting, resend the connection request. */
         if (!server.connected) {
-            send_connection_request(skt, &server, opts->emulation);
+            send_connection_request(skt, &server);
             return;
         }
 
         /* otherwise, send a keep-alive request. */
-        send_keep_alive(skt, &server, opts->emulation);
+        send_keep_alive(skt, &server);
     }
 }
