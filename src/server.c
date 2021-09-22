@@ -103,6 +103,7 @@ static void handle_tunnel_data(struct peer *client)
     /* write a data packet. */
     struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC_SERVER, sizeof(header->magic));
+    header->reserved = 0;
     header->type = PACKET_DATA;
 
     /* send the encapsulated frame to the client. */
