@@ -24,6 +24,8 @@
  *  SOFTWARE.
  */
 
+#include <arpa/inet.h>
+
 #include <stdio.h>
 #include <string.h>
 
@@ -69,13 +71,17 @@ void handle_keep_alive_response(struct peer *server)
 
 void handle_connection_accept(struct peer *server)
 {
+    char ip[sizeof("255.255.255.255")];
+    uint32_t nip;
     int i;
 
     /* if we're already connected then ignore the packet. */
     if (server->connected)
         return;
 
-    fprintf(stderr, "connection established.\n");
+    nip = htonl(server->linkip);
+    inet_ntop(AF_INET, &nip, ip, sizeof(ip));
+    fprintf(stderr, "connection established with %s.\n", ip);
 
     server->connected = 1;
     server->seconds = 0;

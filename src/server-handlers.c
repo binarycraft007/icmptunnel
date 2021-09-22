@@ -24,6 +24,9 @@
  *  SOFTWARE.
  */
 
+#include <arpa/inet.h>
+
+#include <stdio.h>
 #include <string.h>
 
 #include "peer.h"
@@ -82,6 +85,8 @@ void handle_keep_alive_request(struct peer *client, struct echo *request)
 void handle_connection_request(struct peer *client, struct echo *request)
 {
     struct echo_skt *skt = &client->skt;
+    char *verdict, ip[sizeof("255.255.255.255")];
+    uint32_t nip;
 
     struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC_SERVER, sizeof(struct packet_header));
@@ -90,8 +95,10 @@ void handle_connection_request(struct peer *client, struct echo *request)
     /* is a client already connected? */
     if (client->connected) {
         header->type = PACKET_SERVER_FULL;
+        verdict = "ignoring";
     } else {
         header->type = PACKET_CONNECTION_ACCEPT;
+        verdict = "accepting";
 
         client->connected = 1;
         client->seconds = 0;
@@ -101,6 +108,10 @@ void handle_connection_request(struct peer *client, struct echo *request)
         client->punchthru_write_idx = 0;
         client->linkip = request->sourceip;
     }
+
+    nip = htonl(request->sourceip);
+    inet_ntop(AF_INET, &nip, ip, sizeof(ip));
+    fprintf(stderr, "%s connection from %s\n", verdict, ip);
 
     /* send the response. */
     struct echo response;
