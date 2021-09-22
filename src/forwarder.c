@@ -68,12 +68,13 @@ int forward(struct peer *peer, const struct handlers *handlers)
         if (ret < 0) {
             if (!running)
                 break;
-            fprintf(stderr, "unable to select() on sockets: %s\n", strerror(errno));
+            fprintf(stderr, "unable to select() on fds: %s\n", strerror(errno));
             return 1;
         }
         /* did we time out? */
-        else if (ret == 0) {
+        if (ret == 0) {
             handlers->timeout(peer);
+            continue;
         }
 
         /* handle a packet from the echo socket. */
