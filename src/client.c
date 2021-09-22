@@ -162,7 +162,7 @@ int client(const char *hostname)
         goto err_out;
 
     /* open an echo socket. */
-    if (open_echo_skt(skt, opts.mtu) != 0)
+    if (open_echo_skt(skt, opts.mtu, opts.ttl) != 0)
         goto err_out;
 
     /* open a tunnel interface. */

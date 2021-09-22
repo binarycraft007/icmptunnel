@@ -35,7 +35,7 @@
 #include "checksum.h"
 #include "echo-skt.h"
 
-int open_echo_skt(struct echo_skt *skt, int mtu)
+int open_echo_skt(struct echo_skt *skt, int mtu, int ttl)
 {
     skt->buf = NULL;
 
@@ -43,6 +43,16 @@ int open_echo_skt(struct echo_skt *skt, int mtu)
     if ((skt->fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
         fprintf(stderr, "unable to open icmp socket: %s\n", strerror(errno));
         return 1;
+    }
+
+    /* enable/disable ttl security mechanism. */
+    if ((skt->ttl = 255 - ttl)) {
+        ttl = 255;
+
+        if (setsockopt(skt->fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) {
+            fprintf(stderr, "unable to enable ttl security mechanism\n");
+            return 1;
+        }
     }
 
     /* calculate the buffer size required to encapsulate this payload. */
@@ -105,6 +115,9 @@ int receive_echo(struct echo_skt *skt, struct echo *echo)
 
     if (xfer < (int)sizeof(struct echo_buf))
         return 1;  /* bad packet size. */
+
+    if (skt->buf->iph.ttl < skt->ttl)
+        return 1;  /* far away than number of hops specified. */
 
     /* parse the icmp header. */
     const struct icmphdr *header = &skt->buf->icmph;

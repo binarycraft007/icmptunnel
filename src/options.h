@@ -43,6 +43,9 @@ struct options
 
     /* run as a daemon. */
     unsigned int daemon;
+
+    /* hops between client and server. */
+    unsigned int ttl;
 };
 
 extern struct options opts;

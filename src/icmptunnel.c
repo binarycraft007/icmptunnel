@@ -74,6 +74,8 @@ static void help(const char *program)
     fprintf(stderr, "  -e               emulate the microsoft ping utility.\n");
     fprintf(stderr, "  -d               run in the background as a daemon.\n");
     fprintf(stderr, "  -s               run in server-mode.\n");
+    fprintf(stderr, "  -t <hops>        use ttl security mode.\n");
+    fprintf(stderr, "                   the default is to not use this mode.\n");
     fprintf(stderr, "  server           run in client-mode, using the server ip/hostname.\n\n");
     exit(0);
 }
@@ -98,7 +100,8 @@ struct options opts = {
     ICMPTUNNEL_RETRIES,
     ICMPTUNNEL_MTU,
     ICMPTUNNEL_EMULATION,
-    ICMPTUNNEL_DAEMON
+    ICMPTUNNEL_DAEMON,
+    255,
 };
 
 int main(int argc, char *argv[])
@@ -110,7 +113,7 @@ int main(int argc, char *argv[])
     /* parse the option arguments. */
     opterr = 0;
     int opt;
-    while ((opt = getopt(argc, argv, "vhk:r:m:eds")) != -1) {
+    while ((opt = getopt(argc, argv, "vhk:r:m:edst:")) != -1) {
         switch (opt) {
         case 'v':
             version();
@@ -145,6 +148,13 @@ int main(int argc, char *argv[])
             break;
         case 's':
             servermode = 1;
+            break;
+        case 't':
+            opts.ttl = atoi(optarg);
+            if (opts.ttl > 254) {
+                fprintf(stderr, "for -t option hops must be within 0 ... 254\n");
+                exit(1);
+            }
             break;
         case '?':
             /* fall-through. */

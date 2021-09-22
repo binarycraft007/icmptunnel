@@ -45,6 +45,7 @@ struct echo_buf
 struct echo_skt
 {
     int fd;
+    unsigned int ttl;
     int bufsize;
     struct echo_buf *buf;
 };
@@ -64,7 +65,7 @@ struct echo
 };
 
 /* open an icmp echo socket. */
-int open_echo_skt(struct echo_skt *skt, int mtu);
+int open_echo_skt(struct echo_skt *skt, int mtu, int ttl);
 
 /* send an echo packet. */
 int send_echo(struct echo_skt *skt, struct echo *echo);
