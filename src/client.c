@@ -59,7 +59,7 @@ static void handle_icmp_packet(struct peer *server)
     /* check the header magic. */
     const struct packet_header *header = &skt->buf->pkth;
 
-    if (memcmp(header->magic, PACKET_MAGIC, sizeof(header->magic)) != 0)
+    if (memcmp(header->magic, PACKET_MAGIC_SERVER, sizeof(header->magic)) != 0)
         return;
 
     switch (header->type) {
@@ -101,7 +101,7 @@ static void handle_tunnel_data(struct peer *server)
 
     /* write a data packet. */
     struct packet_header *header = &skt->buf->pkth;
-    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
+    memcpy(header->magic, PACKET_MAGIC_CLIENT, sizeof(header->magic));
     header->type = PACKET_DATA;
 
     /* send the encapsulated frame to the server. */

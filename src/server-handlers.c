@@ -61,7 +61,7 @@ void handle_keep_alive_request(struct peer *client, struct echo *request)
 
     /* write a keep-alive response. */
     struct packet_header *header = &skt->buf->pkth;
-    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
+    memcpy(header->magic, PACKET_MAGIC_SERVER, sizeof(header->magic));
     header->type = PACKET_KEEP_ALIVE;
 
     /* send the response to the client. */
@@ -83,7 +83,7 @@ void handle_connection_request(struct peer *client, struct echo *request)
     struct echo_skt *skt = &client->skt;
 
     struct packet_header *header = &skt->buf->pkth;
-    memcpy(header->magic, PACKET_MAGIC, sizeof(struct packet_header));
+    memcpy(header->magic, PACKET_MAGIC_SERVER, sizeof(struct packet_header));
 
     /* is a client already connected? */
     if (client->connected) {

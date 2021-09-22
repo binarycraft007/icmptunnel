@@ -29,8 +29,9 @@
 
 #include <stdint.h>
 
-/* magic value used to mark icmp tunnel packets. */
-#define PACKET_MAGIC "TUNL"
+/* magic values used to mark icmp tunnel packets. */
+#define PACKET_MAGIC_CLIENT "LNUT"
+#define PACKET_MAGIC_SERVER "TUNL"
 
 enum PACKET_TYPE
 {
@@ -44,7 +45,7 @@ enum PACKET_TYPE
 
 struct packet_header
 {
-    uint8_t magic[sizeof(PACKET_MAGIC) - 1];
+    uint8_t magic[sizeof(PACKET_MAGIC_SERVER) - 1];
     uint8_t type;
 } __attribute__((packed));
 

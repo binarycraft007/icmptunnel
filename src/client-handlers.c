@@ -111,7 +111,7 @@ void send_message(struct peer *server, int pkttype)
 
     /* write a connection request packet. */
     struct packet_header *header = &skt->buf->pkth;
-    memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
+    memcpy(header->magic, PACKET_MAGIC_CLIENT, sizeof(header->magic));
     header->type = pkttype;
 
     /* send the request. */
