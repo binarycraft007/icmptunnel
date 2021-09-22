@@ -30,6 +30,7 @@
 #include <sys/time.h>
 #include <sys/select.h>
 
+#include "config.h"
 #include "options.h"
 #include "peer.h"
 #include "handlers.h"
@@ -58,7 +59,7 @@ int forward(struct peer *peer, const struct handlers *handlers)
         FD_SET(device->fd, &fs);
 
         /* set the timeout. */
-        timeout.tv_sec = 1;
+        timeout.tv_sec = ICMPTUNNEL_PUNCHTHRU_INTERVAL;
         timeout.tv_usec = 0;
 
         /* wait for some data. */

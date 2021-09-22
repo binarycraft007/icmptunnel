@@ -44,12 +44,31 @@ struct peer
 
     /* next icmp id and sequence numbers. */
     uint16_t nextid;
-    uint16_t nextseq;
+    union {
+        struct {
+            uint16_t nextseq;
+#define nextseq u1.c.nextseq
+        } c;
+        struct {
+            uint16_t punchthru_wrap;
+#define punchthru_wrap u1.s.punchthru_wrap
+        } s;
+    } u1;
 
-    /* punch-thru sequence numbers. */
-    uint16_t punchthru[ICMPTUNNEL_PUNCHTHRU_WINDOW];
-    uint16_t nextpunchthru;
-    uint16_t nextpunchthru_write;
+    union {
+        struct {
+            uint16_t reserved;
+        } c;
+        struct {
+            /* punch-thru sequence numbers. */
+            uint16_t punchthru_idx;
+            uint16_t punchthru_write_idx;
+            uint16_t punchthru[ICMPTUNNEL_PUNCHTHRU_WINDOW];
+#define punchthru_idx u2.s.punchthru_idx
+#define punchthru_write_idx u2.s.punchthru_write_idx
+#define punchthru u2.s.punchthru
+        } s;
+    } u2;
 
     /* number of timeout intervals since last activity. */
     int seconds;

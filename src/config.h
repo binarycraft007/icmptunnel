@@ -40,7 +40,7 @@
 #define ICMPTUNNEL_PUNCHTHRU_INTERVAL 1
 
 /* default window size of punch-thru packets. */
-#define ICMPTUNNEL_PUNCHTHRU_WINDOW 10
+#define ICMPTUNNEL_PUNCHTHRU_WINDOW 8
 
 /* default tunnel mtu in bytes; assume the size of an ethernet frame
  * minus ip, icmp and packet header sizes - 1.

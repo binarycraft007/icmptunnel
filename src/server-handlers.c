@@ -50,10 +50,7 @@ void handle_server_data(struct peer *client, struct echo *request)
     write_tun_device(device, skt->data + sizeof(struct packet_header), framesize);
 
     /* save the icmp id and sequence numbers for any return traffic. */
-    client->nextid = request->id;
-    client->nextseq = request->seq;
-    client->seconds = 0;
-    client->timeouts = 0;
+    handle_punchthru(client, request);
 }
 
 void handle_keep_alive_request(struct peer *client, struct echo *request)
@@ -98,8 +95,9 @@ void handle_connection_request(struct peer *client, struct echo *request)
         client->connected = 1;
         client->seconds = 0;
         client->timeouts = 0;
-        client->nextpunchthru = 0;
-        client->nextpunchthru_write = 0;
+        client->punchthru_wrap = 0;
+        client->punchthru_idx = 0;
+        client->punchthru_write_idx = 0;
         client->linkip = request->sourceip;
     }
 
@@ -120,10 +118,14 @@ void handle_punchthru(struct peer *client, struct echo *request)
     if (!client->connected || request->sourceip != client->linkip)
         return;
 
+    /* store the id number. */
+    client->nextid = request->id;
+
     /* store the sequence number. */
-    client->punchthru[client->nextpunchthru_write] = request->seq;
-    client->nextpunchthru_write++;
-    client->nextpunchthru_write %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
+    client->punchthru[client->punchthru_write_idx++] = request->seq;
+
+    if (!(client->punchthru_write_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW))
+        client->punchthru_wrap = 1;
 
     client->seconds = 0;
     client->timeouts = 0;
