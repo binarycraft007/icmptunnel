@@ -35,7 +35,11 @@
 #include "checksum.h"
 #include "echo-skt.h"
 
-int open_echo_skt(struct echo_skt *skt, int mtu, int ttl)
+#ifndef ICMP_FILTER
+#define ICMP_FILTER 1
+#endif
+
+int open_echo_skt(struct echo_skt *skt, int mtu, int ttl, int client)
 {
     skt->buf = NULL;
 
@@ -43,6 +47,17 @@ int open_echo_skt(struct echo_skt *skt, int mtu, int ttl)
     if ((skt->fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
         fprintf(stderr, "unable to open icmp socket: %s\n", strerror(errno));
         return 1;
+    }
+
+    /* configure kernel ICMP filters. */
+    if (!(skt->filter = 0)) {
+        skt->client = client;
+
+        client = ~(1U << (client ? ICMP_ECHOREPLY : ICMP_ECHO));
+        if (setsockopt(skt->fd, SOL_RAW, ICMP_FILTER, &client, sizeof(client)) < 0) {
+            fprintf(stderr, "unable to set kernel icmp type filter: use internal\n");
+            skt->filter = 1;
+        }
     }
 
     /* enable/disable ttl security mechanism. */
@@ -80,7 +95,7 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
 
     /* write the icmp header. */
     struct icmphdr *header = &skt->buf->icmph;
-    header->type = echo->reply ? ICMP_ECHOREPLY : ICMP_ECHO;
+    header->type = skt->client ? ICMP_ECHO : ICMP_ECHOREPLY;
     header->code = 0;
     header->un.echo.id = htons(echo->id);
     header->un.echo.sequence = htons(echo->seq);
@@ -96,6 +111,12 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
     }
 
     return 0;
+}
+
+static inline int echo_supported(struct echo_skt *skt, int type)
+{
+    return (type == ICMP_ECHOREPLY && skt->client) ||
+           (type == ICMP_ECHO && !skt->client);
 }
 
 int receive_echo(struct echo_skt *skt, struct echo *echo)
@@ -122,18 +143,13 @@ int receive_echo(struct echo_skt *skt, struct echo *echo)
     /* parse the icmp header. */
     const struct icmphdr *header = &skt->buf->icmph;
 
-    switch (header->type) {
-    case ICMP_ECHOREPLY:
-    case ICMP_ECHO:
-        if (header->code != 0)
-            return 1; /* unexpected packet code */
-        break;
-    default:
+    if (skt->filter && !echo_supported(skt, header->type))
         return 1; /* unexpected packet type. */
-    }
+
+    if (header->code != 0)
+        return 1; /* unexpected packet code. */
 
     echo->size = xfer - sizeof(struct echo_buf);
-    echo->reply = header->type == ICMP_ECHOREPLY;
     echo->id = ntohs(header->un.echo.id);
     echo->seq = ntohs(header->un.echo.sequence);
     echo->sourceip = ntohl(source.sin_addr.s_addr);

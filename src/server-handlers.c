@@ -71,7 +71,6 @@ void handle_keep_alive_request(struct peer *client, struct echo *request)
     /* send the response to the client. */
     struct echo response;
     response.size = 0;
-    response.reply = 1;
     response.id = request->id;
     response.seq = request->seq;
     response.targetip = request->sourceip;
@@ -116,7 +115,6 @@ void handle_connection_request(struct peer *client, struct echo *request)
     /* send the response. */
     struct echo response;
     response.size = 0;
-    response.reply = 1;
     response.id = request->id;
     response.seq = request->seq;
     response.targetip = request->sourceip;

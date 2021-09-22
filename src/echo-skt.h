@@ -45,15 +45,18 @@ struct echo_buf
 struct echo_skt
 {
     int fd;
-    unsigned int ttl;
-    int bufsize;
+
+    unsigned int ttl:8;
+    unsigned int client:1;
+    unsigned int filter:1;
+
+    unsigned int bufsize:16;
     struct echo_buf *buf;
 };
 
 struct echo
 {
     int size;
-    int reply;
     uint16_t id;
     uint16_t seq;
     union {
@@ -65,7 +68,7 @@ struct echo
 };
 
 /* open an icmp echo socket. */
-int open_echo_skt(struct echo_skt *skt, int mtu, int ttl);
+int open_echo_skt(struct echo_skt *skt, int mtu, int ttl, int client);
 
 /* send an echo packet. */
 int send_echo(struct echo_skt *skt, struct echo *echo);

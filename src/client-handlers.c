@@ -124,7 +124,6 @@ void send_message(struct peer *server, int pkttype)
     /* send the request. */
     struct echo request;
     request.size = 0;
-    request.reply = 0;
     request.id = server->nextid;
     request.seq = opts.emulation ? server->nextseq : server->nextseq++;
     request.targetip = server->linkip;

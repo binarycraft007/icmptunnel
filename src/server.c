@@ -48,10 +48,6 @@ static void handle_icmp_packet(struct peer *client)
     if (receive_echo(skt, &echo) != 0)
         return;
 
-    /* we're only expecting echo requests. */
-    if (echo.reply)
-        return;
-
     /* check the header magic. */
     const struct packet_header *header = &skt->buf->pkth;
 
@@ -109,7 +105,6 @@ static void handle_tunnel_data(struct peer *client)
     /* send the encapsulated frame to the client. */
     struct echo echo;
     echo.size = framesize;
-    echo.reply = 1;
     echo.id = client->nextid;
     echo.seq = client->punchthru[client->punchthru_idx++];
     echo.targetip = client->linkip;
@@ -153,7 +148,7 @@ int server(void)
     int ret = 1;
 
     /* open an echo socket. */
-    if (open_echo_skt(skt, opts.mtu, opts.ttl) != 0)
+    if (open_echo_skt(skt, opts.mtu, opts.ttl, 0) != 0)
         goto err_out;
 
     /* open a tunnel interface. */
