@@ -26,6 +26,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <netinet/ip.h>
@@ -36,7 +37,7 @@
 
 int open_echo_skt(struct echo_skt *skt, int mtu)
 {
-    skt->buf = skt->data = NULL;
+    skt->buf = NULL;
 
     /* open the icmp socket. */
     if ((skt->fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
@@ -45,16 +46,13 @@ int open_echo_skt(struct echo_skt *skt, int mtu)
     }
 
     /* calculate the buffer size required to encapsulate this payload. */
-    skt->bufsize = mtu + sizeof(struct iphdr) + sizeof(struct icmphdr);
+    skt->bufsize = mtu + sizeof(struct echo_buf);
 
     /* allocate the buffer. */
     if ((skt->buf = malloc(skt->bufsize)) == NULL) {
         fprintf(stderr, "unable to allocate icmp tx/rx buffers: %s\n", strerror(errno));
         return 1;
     }
-
-    /* save a pointer to the icmp payload for convenience. */
-    skt->data = skt->buf + sizeof(struct iphdr) + sizeof(struct icmphdr);
 
     return 0;
 }
@@ -68,19 +66,20 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
     dest.sin_addr.s_addr = htonl(echo->targetip);
     dest.sin_port = 0;  /* for valgrind. */
 
+    xfer = sizeof(struct icmphdr) + sizeof(struct packet_header) +  echo->size;
+
     /* write the icmp header. */
-    struct icmphdr *header = (struct icmphdr*)(skt->buf + sizeof(struct iphdr));
-    header->type = echo->reply ? 0 : 8;
+    struct icmphdr *header = &skt->buf->icmph;
+    header->type = echo->reply ? ICMP_ECHOREPLY : ICMP_ECHO;
     header->code = 0;
     header->un.echo.id = htons(echo->id);
     header->un.echo.sequence = htons(echo->seq);
     header->checksum = 0;
-    header->checksum = checksum(skt->buf + sizeof(struct iphdr), sizeof(struct icmphdr) + echo->size);
+    header->checksum = checksum(header, xfer);
 
     /* send the packet. */
-    xfer = sendto(skt->fd, skt->buf + sizeof(struct iphdr), sizeof(struct icmphdr) + echo->size, 0,
-        (struct sockaddr*)&dest, sizeof(struct sockaddr_in));
-
+    xfer = sendto(skt->fd, header, xfer, 0,
+                  (struct sockaddr *)&dest, sizeof(struct sockaddr_in));
     if (xfer < 0) {
         fprintf(stderr, "unable to send icmp packet: %s\n", strerror(errno));
         return 1;
@@ -92,28 +91,36 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
 int receive_echo(struct echo_skt *skt, struct echo *echo)
 {
     ssize_t xfer;
+
     struct sockaddr_in source;
     socklen_t source_size = sizeof(struct sockaddr_in);
 
     /* receive a packet. */
-    xfer = recvfrom(skt->fd, skt->buf, skt->bufsize, 0, (struct sockaddr*)&source, &source_size);
-
+    xfer = recvfrom(skt->fd, skt->buf, skt->bufsize, 0,
+                    (struct sockaddr *)&source, &source_size);
     if (xfer < 0) {
         fprintf(stderr, "unable to receive icmp packet: %s\n", strerror(errno));
         return 1;
     }
 
-    /* parse the icmp header. */
-    struct icmphdr *header = (struct icmphdr*)(skt->buf + sizeof(struct iphdr));
-
-    if (xfer < (int)sizeof(struct iphdr) + (int)sizeof(struct icmphdr))
+    if (xfer < (int)sizeof(struct echo_buf))
         return 1;  /* bad packet size. */
 
-    if ((header->type != 0 && header->type != 8) || header->code != 0)
-        return 1;  /* unexpected packet type. */
+    /* parse the icmp header. */
+    const struct icmphdr *header = &skt->buf->icmph;
 
-    echo->size = xfer - sizeof(struct iphdr) - sizeof(struct icmphdr);
-    echo->reply = header->type == 0;
+    switch (header->type) {
+    case ICMP_ECHOREPLY:
+    case ICMP_ECHO:
+        if (header->code != 0)
+            return 1; /* unexpected packet code */
+        break;
+    default:
+        return 1; /* unexpected packet type. */
+    }
+
+    echo->size = xfer - sizeof(struct echo_buf);
+    echo->reply = header->type == ICMP_ECHOREPLY;
     echo->id = ntohs(header->un.echo.id);
     echo->seq = ntohs(header->un.echo.sequence);
     echo->sourceip = ntohl(source.sin_addr.s_addr);

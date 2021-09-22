@@ -56,12 +56,8 @@ static void handle_icmp_packet(struct peer *server)
     if (!echo.reply)
         return;
 
-    /* check the packet size. */
-    if (echo.size < (int)sizeof(struct packet_header))
-        return;
-
     /* check the header magic. */
-    struct packet_header *header = (struct packet_header*)skt->data;
+    const struct packet_header *header = &skt->buf->pkth;
 
     if (memcmp(header->magic, PACKET_MAGIC, sizeof(header->magic)) != 0)
         return;
@@ -93,10 +89,10 @@ static void handle_tunnel_data(struct peer *server)
 {
     struct echo_skt *skt = &server->skt;
     struct tun_device *device = &server->device;
-    int size;
+    int framesize;
 
     /* read the frame. */
-    if (read_tun_device(device, skt->data + sizeof(struct packet_header), &size) != 0)
+    if (read_tun_device(device, skt->buf->payload, &framesize) != 0)
         return;
 
     /* if we're not connected then drop the frame. */
@@ -104,13 +100,13 @@ static void handle_tunnel_data(struct peer *server)
         return;
 
     /* write a data packet. */
-    struct packet_header *header = (struct packet_header*)skt->data;
+    struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
     header->type = PACKET_DATA;
 
     /* send the encapsulated frame to the server. */
     struct echo echo;
-    echo.size = sizeof(struct packet_header) + size;
+    echo.size = framesize;
     echo.reply = 0;
     echo.id = server->nextid;
     echo.seq = opts.emulation ? server->nextseq : server->nextseq++;
@@ -161,15 +157,12 @@ int client(const char *hostname)
     struct tun_device *device = &server.device;
     int ret = 1;
 
-    /* calculate the required icmp payload size. */
-    int bufsize = opts.mtu + sizeof(struct packet_header);
-
     /* resolve the server hostname. */
     if (resolve(hostname, &server.linkip) != 0)
         goto err_out;
 
     /* open an echo socket. */
-    if (open_echo_skt(skt, bufsize) != 0)
+    if (open_echo_skt(skt, opts.mtu) != 0)
         goto err_out;
 
     /* open a tunnel interface. */

@@ -52,12 +52,8 @@ static void handle_icmp_packet(struct peer *client)
     if (echo.reply)
         return;
 
-    /* check the packet size. */
-    if (echo.size < (int)sizeof(struct packet_header))
-        return;
-
     /* check the header magic. */
-    struct packet_header *header = (struct packet_header*)skt->data;
+    const struct packet_header *header = &skt->buf->pkth;
 
     if (memcmp(header->magic, PACKET_MAGIC, sizeof(header->magic)) != 0)
         return;
@@ -89,10 +85,10 @@ static void handle_tunnel_data(struct peer *client)
 {
     struct echo_skt *skt = &client->skt;
     struct tun_device *device = &client->device;
-    int size;
+    int framesize;
 
     /* read the frame. */
-    if (read_tun_device(device, skt->data + sizeof(struct packet_header), &size) != 0)
+    if (read_tun_device(device, skt->buf->payload, &framesize) != 0)
         return;
 
     /* if no client is connected then drop the frame. */
@@ -105,13 +101,13 @@ static void handle_tunnel_data(struct peer *client)
             return;
 
     /* write a data packet. */
-    struct packet_header *header = (struct packet_header*)skt->data;
+    struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
     header->type = PACKET_DATA;
 
     /* send the encapsulated frame to the client. */
     struct echo echo;
-    echo.size = sizeof(struct packet_header) + size;
+    echo.size = framesize;
     echo.reply = 1;
     echo.id = client->nextid;
     echo.seq = client->punchthru[client->punchthru_idx++];
@@ -155,11 +151,8 @@ int server(void)
     struct tun_device *device = &client.device;
     int ret = 1;
 
-    /* calculate the required icmp payload size. */
-    int bufsize = opts.mtu + sizeof(struct packet_header);
-
     /* open an echo socket. */
-    if (open_echo_skt(skt, bufsize) != 0)
+    if (open_echo_skt(skt, opts.mtu) != 0)
         goto err_out;
 
     /* open a tunnel interface. */

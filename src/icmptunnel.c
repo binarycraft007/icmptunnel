@@ -39,6 +39,12 @@
 #include "server.h"
 #include "options.h"
 #include "forwarder.h"
+#include "echo-skt.h"
+
+/* default tunnel mtu in bytes; assume the size of an ethernet frame
+ * minus ip, icmp and packet header sizes.
+ */
+#define ICMPTUNNEL_MTU (1500 - (int)sizeof(struct echo_buf))
 
 #ifndef ETH_MIN_MTU
 #define ETH_MIN_MTU 68

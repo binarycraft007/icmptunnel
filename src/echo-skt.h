@@ -27,14 +27,26 @@
 #ifndef ICMPTUNNEL_ECHOSKT_H
 #define ICMPTUNNEL_ECHOSKT_H
 
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
+
 #include <stdint.h>
-#include <stdlib.h>
+
+#include "protocol.h"
+
+struct echo_buf
+{
+    struct iphdr iph;
+    struct icmphdr icmph;
+    struct packet_header pkth;
+    uint8_t payload[];
+} __attribute__((packed));
 
 struct echo_skt
 {
     int fd;
     int bufsize;
-    char *buf, *data;
+    struct echo_buf *buf;
 };
 
 struct echo

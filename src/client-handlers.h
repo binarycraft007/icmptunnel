@@ -31,7 +31,7 @@ struct peer;
 struct echo;
 
 /* handle a data packet. */
-void handle_client_data(struct peer *server, struct echo *echo);
+void handle_client_data(struct peer *server, struct echo *response);
 
 /* handle a keep-alive packet. */
 void handle_keep_alive_response(struct peer *server);

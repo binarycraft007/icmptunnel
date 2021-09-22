@@ -36,18 +36,17 @@ void handle_server_data(struct peer *client, struct echo *request)
 {
     struct echo_skt *skt = &client->skt;
     struct tun_device *device = &client->device;
+    int framesize = request->size;
 
     if (!client->connected || request->sourceip != client->linkip)
         return;
 
     /* determine the size of the encapsulated frame. */
-    int framesize = request->size - sizeof(struct packet_header);
-
     if (!framesize)
         return;
 
     /* write the frame to the tunnel interface. */
-    write_tun_device(device, skt->data + sizeof(struct packet_header), framesize);
+    write_tun_device(device, skt->buf->payload, framesize);
 
     /* save the icmp id and sequence numbers for any return traffic. */
     handle_punchthru(client, request);
@@ -61,13 +60,13 @@ void handle_keep_alive_request(struct peer *client, struct echo *request)
         return;
 
     /* write a keep-alive response. */
-    struct packet_header *header = (struct packet_header*)skt->data;
+    struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
     header->type = PACKET_KEEP_ALIVE;
 
     /* send the response to the client. */
     struct echo response;
-    response.size = sizeof(struct packet_header);
+    response.size = 0;
     response.reply = 1;
     response.id = request->id;
     response.seq = request->seq;
@@ -83,7 +82,7 @@ void handle_connection_request(struct peer *client, struct echo *request)
 {
     struct echo_skt *skt = &client->skt;
 
-    struct packet_header *header = (struct packet_header*)skt->data;
+    struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC, sizeof(struct packet_header));
 
     /* is a client already connected? */
@@ -103,7 +102,7 @@ void handle_connection_request(struct peer *client, struct echo *request)
 
     /* send the response. */
     struct echo response;
-    response.size = sizeof(struct packet_header);
+    response.size = 0;
     response.reply = 1;
     response.id = request->id;
     response.seq = request->seq;

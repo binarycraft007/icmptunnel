@@ -36,23 +36,22 @@
 #include "forwarder.h"
 #include "client-handlers.h"
 
-void handle_client_data(struct peer *server, struct echo *echo)
+void handle_client_data(struct peer *server, struct echo *response)
 {
     struct echo_skt *skt = &server->skt;
     struct tun_device *device = &server->device;
+    int framesize = response->size;
 
     /* if we're not connected then drop the packet. */
     if (!server->connected)
         return;
 
     /* determine the size of the encapsulated frame. */
-    int framesize = echo->size - sizeof(struct packet_header);
-
     if (!framesize)
         return;
 
     /* write the frame to the tunnel interface. */
-    write_tun_device(device, skt->data + sizeof(struct packet_header), framesize);
+    write_tun_device(device, skt->buf->payload, framesize);
 
     server->seconds = 0;
     server->timeouts = 0;
@@ -111,13 +110,13 @@ void send_message(struct peer *server, int pkttype)
     struct echo_skt *skt = &server->skt;
 
     /* write a connection request packet. */
-    struct packet_header *header = (struct packet_header*)skt->data;
+    struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC, sizeof(header->magic));
     header->type = pkttype;
 
     /* send the request. */
     struct echo request;
-    request.size = sizeof(struct packet_header);
+    request.size = 0;
     request.reply = 0;
     request.id = server->nextid;
     request.seq = opts.emulation ? server->nextseq : server->nextseq++;
