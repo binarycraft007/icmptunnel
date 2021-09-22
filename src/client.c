@@ -95,6 +95,10 @@ static void handle_tunnel_data(struct peer *server)
     if (!server->connected)
         return;
 
+    /* do not send empty data packets if any. */
+    if (!framesize)
+        return;
+
     /* write a data packet. */
     struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC_CLIENT, sizeof(header->magic));

@@ -91,6 +91,10 @@ static void handle_tunnel_data(struct peer *client)
     if (!client->connected)
         return;
 
+    /* do not send empty data packets if any. */
+    if (!framesize)
+        return;
+
     /* if no punchthru entries then drop the frame. */
     if (!client->punchthru_wrap)
         if (client->punchthru_idx == client->punchthru_write_idx)
