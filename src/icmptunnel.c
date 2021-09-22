@@ -76,7 +76,13 @@ static void help(const char *program)
     fprintf(stderr, "  -s               run in server-mode.\n");
     fprintf(stderr, "  -t <hops>        use ttl security mode.\n");
     fprintf(stderr, "                   the default is to not use this mode.\n");
-    fprintf(stderr, "  server           run in client-mode, using the server ip/hostname.\n\n");
+    fprintf(stderr, "  server           run in client-mode, using the server ip/hostname.\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Note that process requires CAP_NET_RAW to open ICMP raw sockets\n");
+    fprintf(stderr, "and CAP_NET_ADMIN to manage tun devices. You should run either\n");
+    fprintf(stderr, "as root or grant above capabilities (e.g. via POSIX file capabilities)\n");
+    fprintf(stderr, "\n");
+
     exit(0);
 }
 
@@ -185,13 +191,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "unknown option -- '%s'\n", argv[0]);
         fprintf(stderr, "use %s -h for more information.\n", program);
         return 1;
-    }
-
-    /* check for root privileges. */
-    if (geteuid() != 0) {
-        fprintf(stderr, "opening raw icmp sockets requires root privileges.\n");
-        fprintf(stderr, "are you running as root?\n");
-        exit(1);
     }
 
     /* register the signal handlers. */
