@@ -37,8 +37,6 @@ struct peer
     struct echo_skt skt;
     struct tun_device device;
 
-    int connected;
-
     /* link address. */
     uint32_t linkip;
 
@@ -57,7 +55,9 @@ struct peer
 
     union {
         struct {
-            uint16_t reserved;
+            /* connected to server. */
+            uint16_t connected;
+#define connected u2.c.connected
         } c;
         struct {
             /* punch-thru sequence numbers. */

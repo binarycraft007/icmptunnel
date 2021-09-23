@@ -88,7 +88,7 @@ static void handle_tunnel_data(struct peer *client)
         return;
 
     /* if no client is connected then drop the frame. */
-    if (!client->connected)
+    if (!client->linkip)
         return;
 
     /* do not send empty data packets if any. */
@@ -121,7 +121,7 @@ static void handle_tunnel_data(struct peer *client)
 
 static void handle_timeout(struct peer *client)
 {
-    if (!client->connected)
+    if (!client->linkip)
         return;
 
     /* has the peer timeout elapsed? */
@@ -132,7 +132,7 @@ static void handle_timeout(struct peer *client)
         if (opts.retries != -1 && ++client->timeouts == opts.retries) {
             fprintf(stderr, "client connection timed out.\n");
 
-            client->connected = 0;
+            client->linkip = 0;
             return;
         }
     }
@@ -166,7 +166,7 @@ int server(void)
     }
 
     /* mark as not connected with client. */
-    client.connected = 0;
+    client.linkip = 0;
 
     /* initialize keepalive seconds and timeout retries. */
     client.seconds = 0;

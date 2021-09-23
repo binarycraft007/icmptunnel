@@ -41,7 +41,7 @@ void handle_server_data(struct peer *client, struct echo *request)
     struct tun_device *device = &client->device;
     int framesize = request->size;
 
-    if (!client->connected || request->sourceip != client->linkip)
+    if (!client->linkip || request->sourceip != client->linkip)
         return;
 
     /* determine the size of the encapsulated frame. */
@@ -59,7 +59,7 @@ void handle_keep_alive_request(struct peer *client, struct echo *request)
 {
     struct echo_skt *skt = &client->skt;
 
-    if (!client->connected || request->sourceip != client->linkip)
+    if (!client->linkip || request->sourceip != client->linkip)
         return;
 
     /* write a keep-alive response. */
@@ -91,14 +91,13 @@ void handle_connection_request(struct peer *client, struct echo *request)
     header->reserved = 0;
 
     /* is a client already connected? */
-    if (client->connected) {
+    if (client->linkip) {
         header->type = PACKET_SERVER_FULL;
         verdict = "ignoring";
     } else {
         header->type = PACKET_CONNECTION_ACCEPT;
         verdict = "accepting";
 
-        client->connected = 1;
         client->seconds = 0;
         client->timeouts = 0;
         client->punchthru_wrap = 0;
@@ -123,7 +122,7 @@ void handle_connection_request(struct peer *client, struct echo *request)
 /* handle a punch-thru packet. */
 void handle_punchthru(struct peer *client, struct echo *request)
 {
-    if (!client->connected || request->sourceip != client->linkip)
+    if (!client->linkip || request->sourceip != client->linkip)
         return;
 
     /* store the id number. */
