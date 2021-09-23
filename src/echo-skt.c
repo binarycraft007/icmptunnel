@@ -88,7 +88,7 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
 
     struct sockaddr_in dest;
     dest.sin_family = AF_INET;
-    dest.sin_addr.s_addr = htonl(echo->targetip);
+    dest.sin_addr.s_addr = echo->targetip;
     dest.sin_port = 0;  /* for valgrind. */
 
     xfer = sizeof(struct icmphdr) + sizeof(struct packet_header) +  echo->size;
@@ -97,8 +97,8 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
     struct icmphdr *header = &skt->buf->icmph;
     header->type = skt->client ? ICMP_ECHO : ICMP_ECHOREPLY;
     header->code = 0;
-    header->un.echo.id = htons(echo->id);
-    header->un.echo.sequence = htons(echo->seq);
+    header->un.echo.id = echo->id;
+    header->un.echo.sequence = echo->seq;
     header->checksum = 0;
     header->checksum = checksum(header, xfer);
 
@@ -150,9 +150,9 @@ int receive_echo(struct echo_skt *skt, struct echo *echo)
         return 1; /* unexpected packet code. */
 
     echo->size = xfer - sizeof(struct echo_buf);
-    echo->id = ntohs(header->un.echo.id);
-    echo->seq = ntohs(header->un.echo.sequence);
-    echo->sourceip = ntohl(source.sin_addr.s_addr);
+    echo->id = header->un.echo.id;
+    echo->seq = header->un.echo.sequence;
+    echo->sourceip = source.sin_addr.s_addr;
 
     return 0;
 }

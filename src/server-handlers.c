@@ -85,7 +85,6 @@ void handle_connection_request(struct peer *client, struct echo *request)
 {
     struct echo_skt *skt = &client->skt;
     char *verdict, ip[sizeof("255.255.255.255")];
-    uint32_t nip;
 
     struct packet_header *header = &skt->buf->pkth;
     memcpy(header->magic, PACKET_MAGIC_SERVER, sizeof(struct packet_header));
@@ -108,8 +107,7 @@ void handle_connection_request(struct peer *client, struct echo *request)
         client->linkip = request->sourceip;
     }
 
-    nip = htonl(request->sourceip);
-    inet_ntop(AF_INET, &nip, ip, sizeof(ip));
+    inet_ntop(AF_INET, &request->sourceip, ip, sizeof(ip));
     fprintf(stderr, "%s connection from %s\n", verdict, ip);
 
     /* send the response. */

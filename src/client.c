@@ -24,6 +24,8 @@
  *  SOFTWARE.
  */
 
+#include <arpa/inet.h>
+
 #include <stdio.h>
 #include <string.h>
 
@@ -109,8 +111,11 @@ static void handle_tunnel_data(struct peer *server)
     struct echo echo;
     echo.size = framesize;
     echo.id = server->nextid;
-    echo.seq = opts.emulation ? server->nextseq : server->nextseq++;
+    echo.seq = server->nextseq;
     echo.targetip = server->linkip;
+
+    if (!opts.emulation)
+        server->nextseq = htons(ntohs(server->nextseq) + 1);
 
     send_echo(skt, &echo);
 }
@@ -170,8 +175,8 @@ int client(const char *hostname)
         goto err_close_skt;
 
     /* choose initial icmp id and sequence numbers. */
-    server.nextid = rand();
-    server.nextseq = rand();
+    server.nextid = htons(rand());
+    server.nextseq = htons(rand());
 
     /* mark as not connected to server. */
     server.connected = 0;

@@ -72,15 +72,13 @@ void handle_keep_alive_response(struct peer *server)
 void handle_connection_accept(struct peer *server)
 {
     char ip[sizeof("255.255.255.255")];
-    uint32_t nip;
     int i;
 
     /* if we're already connected then ignore the packet. */
     if (server->connected)
         return;
 
-    nip = htonl(server->linkip);
-    inet_ntop(AF_INET, &nip, ip, sizeof(ip));
+    inet_ntop(AF_INET, &server->linkip, ip, sizeof(ip));
     fprintf(stderr, "connection established with %s.\n", ip);
 
     server->connected = 1;
@@ -125,8 +123,11 @@ void send_message(struct peer *server, int pkttype)
     struct echo request;
     request.size = 0;
     request.id = server->nextid;
-    request.seq = opts.emulation ? server->nextseq : server->nextseq++;
+    request.seq = server->nextseq;
     request.targetip = server->linkip;
+
+    if (!opts.emulation)
+        server->nextseq = htons(ntohs(server->nextseq) + 1);
 
     send_echo(skt, &request);
 }
