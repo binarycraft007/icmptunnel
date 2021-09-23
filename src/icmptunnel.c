@@ -105,17 +105,14 @@ int main(int argc, char *argv[])
             break;
         case 'k':
             options.keepalive = atoi(optarg);
-            if (options.keepalive == 0) {
+            if (!options.keepalive)
                 options.keepalive = 1;
-            }
             break;
         case 'r':
-            if (strcmp(optarg, "infinite") == 0) {
+            if (!strcmp(optarg, "infinite"))
                 options.retries = -1;
-            }
-            else {
+            else
                 options.retries = atoi(optarg);
-            }
             break;
         case 'm':
             options.mtu = atoi(optarg);

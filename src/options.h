@@ -36,13 +36,13 @@ struct options
     int retries;
 
     /* tunnel mtu. */
-    int mtu;
+    unsigned int mtu;
 
     /* enable windows ping emulation. */
-    int emulation;
+    unsigned int emulation;
 
     /* run as a daemon. */
-    int daemon;
+    unsigned int daemon;
 };
 
 #endif
