@@ -123,7 +123,8 @@ static void handle_tunnel_data(struct peer *server)
 static void handle_timeout(struct peer *server)
 {
     /* send a punch-thru packet. */
-    send_punchthru(server);
+    if (server->connected)
+        send_punchthru(server);
 
     /* has the peer timeout elapsed? */
     if (++server->seconds == opts.keepalive) {
@@ -138,14 +139,13 @@ static void handle_timeout(struct peer *server)
             return;
         }
 
-        /* if we're still connecting, resend the connection request. */
-        if (!server->connected) {
+        if (server->connected) {
+            /* otherwise, send a keep-alive request. */
+            send_keep_alive(server);
+        } else {
+           /* if we're still connecting, resend the connection request. */
             send_connection_request(server);
-            return;
         }
-
-        /* otherwise, send a keep-alive request. */
-        send_keep_alive(server);
     }
 }
 
