@@ -41,7 +41,10 @@
 struct tun_device
 {
     int fd;
-    unsigned int mtu;
+
+    unsigned int mtu:16;
+    unsigned int iopkts:8;
+
     char name[IF_NAMESIZE];
 };
 

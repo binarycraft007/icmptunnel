@@ -75,6 +75,9 @@ int open_tun_device(struct tun_device *device, int mtu)
         close(sk);
     }
 
+    /* initialize packet io statistics. */
+    device->iopkts = 0;
+
     fprintf(stderr, "opened tunnel device: %s, mtu: %u\n", device->name, mtu);
 
     return 0;

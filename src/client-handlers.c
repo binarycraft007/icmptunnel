@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
 #include "peer.h"
 #include "daemon.h"
 #include "options.h"
@@ -53,10 +54,17 @@ void handle_client_data(struct peer *server, struct echo *response)
         return;
 
     /* write the frame to the tunnel interface. */
-    write_tun_device(device, skt->buf->payload, framesize);
+    if (write_tun_device(device, skt->buf->payload, framesize))
+        return;
 
     server->seconds = 0;
     server->timeouts = 0;
+
+    /* send punch-thru to avoid server sequence number starvartion. */
+    if (device->iopkts + 1 >= ICMPTUNNEL_PUNCHTHRU_WINDOW / 2)
+        send_punchthru(server);
+    else
+        device->iopkts++;
 }
 
 void handle_keep_alive_response(struct peer *server)
@@ -72,7 +80,6 @@ void handle_keep_alive_response(struct peer *server)
 void handle_connection_accept(struct peer *server)
 {
     char ip[sizeof("255.255.255.255")];
-    int i;
 
     /* if we're already connected then ignore the packet. */
     if (server->connected)
@@ -92,9 +99,7 @@ void handle_connection_accept(struct peer *server)
     }
 
     /* send the initial punch-thru packets. */
-    for (i = 0; i < ICMPTUNNEL_PUNCHTHRU_WINDOW; i++) {
-        send_punchthru(server);
-    }
+    send_punchthru(server);
 }
 
 void handle_server_full(struct peer *server)

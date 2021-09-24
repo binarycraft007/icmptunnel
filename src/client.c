@@ -90,7 +90,7 @@ static void handle_tunnel_data(struct peer *server)
     int framesize;
 
     /* read the frame. */
-    if (read_tun_device(device, skt->buf->payload, &framesize) != 0)
+    if (read_tun_device(device, skt->buf->payload, &framesize))
         return;
 
     /* if we're not connected then drop the frame. */
@@ -117,14 +117,22 @@ static void handle_tunnel_data(struct peer *server)
     if (!opts.emulation)
         server->nextseq = htons(ntohs(server->nextseq) + 1);
 
-    send_echo(skt, &echo);
+    if (send_echo(skt, &echo))
+        return;
+
+    if (device->iopkts > 0)
+        device->iopkts--;
 }
 
 static void handle_timeout(struct peer *server)
 {
     /* send a punch-thru packet. */
-    if (server->connected)
+    if (server->connected) {
         send_punchthru(server);
+
+        if (server->device.iopkts > 0)
+            server->device.iopkts--;
+    }
 
     /* has the peer timeout elapsed? */
     if (++server->seconds == opts.keepalive) {

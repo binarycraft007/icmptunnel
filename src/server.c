@@ -84,7 +84,7 @@ static void handle_tunnel_data(struct peer *client)
     int framesize;
 
     /* read the frame. */
-    if (read_tun_device(device, skt->buf->payload, &framesize) != 0)
+    if (read_tun_device(device, skt->buf->payload, &framesize))
         return;
 
     /* if no client is connected then drop the frame. */
