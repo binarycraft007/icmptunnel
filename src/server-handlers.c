@@ -24,8 +24,11 @@
  *  SOFTWARE.
  */
 
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
 #include <arpa/inet.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -35,14 +38,10 @@
 #include "protocol.h"
 #include "server-handlers.h"
 
-void handle_server_data(struct peer *client, struct echo *request)
+void handle_server_data(struct peer *client, int framesize)
 {
     struct echo_skt *skt = &client->skt;
     struct tun_device *device = &client->device;
-    int framesize = request->size;
-
-    if (!client->linkip || request->sourceip != client->linkip)
-        return;
 
     /* determine the size of the encapsulated frame. */
     if (!framesize)
@@ -52,15 +51,12 @@ void handle_server_data(struct peer *client, struct echo *request)
     write_tun_device(device, skt->buf->payload, framesize);
 
     /* save the icmp id and sequence numbers for any return traffic. */
-    handle_punchthru(client, request);
+    handle_punchthru(client);
 }
 
-void handle_keep_alive_request(struct peer *client, struct echo *request)
+void handle_keep_alive_request(struct peer *client)
 {
     struct echo_skt *skt = &client->skt;
-
-    if (!client->linkip || request->sourceip != client->linkip)
-        return;
 
     /* write a keep-alive response. */
     struct packet_header *pkth = &skt->buf->pkth;
@@ -69,21 +65,16 @@ void handle_keep_alive_request(struct peer *client, struct echo *request)
     pkth->type = PACKET_KEEP_ALIVE;
 
     /* send the response to the client. */
-    struct echo response;
-    response.size = 0;
-    response.id = request->id;
-    response.seq = request->seq;
-    response.targetip = request->sourceip;
-
-    send_echo(skt, &response);
+    send_echo(skt, client->linkip, 0);
 
     client->seconds = 0;
     client->timeouts = 0;
 }
 
-void handle_connection_request(struct peer *client, struct echo *request)
+void handle_connection_request(struct peer *client)
 {
     struct echo_skt *skt = &client->skt;
+    uint32_t sourceip = skt->buf->iph.saddr;
     char *verdict, ip[sizeof("255.255.255.255")];
 
     struct packet_header *pkth = &skt->buf->pkth;
@@ -103,33 +94,26 @@ void handle_connection_request(struct peer *client, struct echo *request)
         client->punchthru_wrap = 0;
         client->punchthru_idx = 0;
         client->punchthru_write_idx = 0;
-        client->linkip = request->sourceip;
+        client->linkip = sourceip;
     }
 
-    inet_ntop(AF_INET, &request->sourceip, ip, sizeof(ip));
+    inet_ntop(AF_INET, &sourceip, ip, sizeof(ip));
     fprintf(stderr, "%s connection from %s\n", verdict, ip);
 
     /* send the response. */
-    struct echo response;
-    response.size = 0;
-    response.id = request->id;
-    response.seq = request->seq;
-    response.targetip = request->sourceip;
-
-    send_echo(skt, &response);
+    send_echo(skt, sourceip, 0);
 }
 
 /* handle a punch-thru packet. */
-void handle_punchthru(struct peer *client, struct echo *request)
+void handle_punchthru(struct peer *client)
 {
-    if (!client->linkip || request->sourceip != client->linkip)
-        return;
+    struct icmphdr *icmph = &client->skt.buf->icmph;
 
     /* store the id number. */
-    client->nextid = request->id;
+    client->nextid = icmph->un.echo.id;
 
     /* store the sequence number. */
-    client->punchthru[client->punchthru_write_idx++] = request->seq;
+    client->punchthru[client->punchthru_write_idx++] = icmph->un.echo.sequence;
 
     if (!(client->punchthru_write_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW))
         client->punchthru_wrap = 1;

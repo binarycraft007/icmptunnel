@@ -44,14 +44,14 @@
 static void handle_icmp_packet(struct peer *server)
 {
     struct echo_skt *skt = &server->skt;
-    struct echo echo;
+    int size;
 
     /* receive the packet. */
-    if (receive_echo(skt, &echo) < 0)
+    if ((size = receive_echo(skt)) < 0)
         return;
 
     /* we're only expecting packets from the server. */
-    if (echo.sourceip != server->linkip)
+    if (skt->buf->iph.saddr != server->linkip)
         return;
 
     /* check the header magic. */
@@ -63,7 +63,7 @@ static void handle_icmp_packet(struct peer *server)
     switch (pkth->type) {
     case PACKET_DATA:
         /* handle a data packet. */
-        handle_client_data(server, &echo);
+        handle_client_data(server, size);
         break;
 
     case PACKET_KEEP_ALIVE:
@@ -98,22 +98,7 @@ static void handle_tunnel_data(struct peer *server)
         return;
 
     /* write a data packet. */
-    struct packet_header *pkth = &skt->buf->pkth;
-    memcpy(pkth->magic, PACKET_MAGIC_CLIENT, sizeof(pkth->magic));
-    pkth->reserved = 0;
-    pkth->type = PACKET_DATA;
-
-    /* send the encapsulated frame to the server. */
-    struct echo echo;
-    echo.size = framesize;
-    echo.id = server->nextid;
-    echo.seq = server->nextseq;
-    echo.targetip = server->linkip;
-
-    if (!opts.emulation)
-        server->nextseq = htons(ntohs(server->nextseq) + 1);
-
-    if (send_echo(skt, &echo) < 0)
+    if (send_message(server, PACKET_DATA, framesize) < 0)
         return;
 
     if (device->iopkts > 0)

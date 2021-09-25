@@ -42,10 +42,10 @@
 static void handle_icmp_packet(struct peer *client)
 {
     struct echo_skt *skt = &client->skt;
-    struct echo echo;
+    int size;
 
     /* receive the packet. */
-    if (receive_echo(skt, &echo) < 0)
+    if ((size = receive_echo(skt)) < 0)
         return;
 
     /* check the header magic. */
@@ -54,26 +54,30 @@ static void handle_icmp_packet(struct peer *client)
     if (memcmp(pkth->magic, PACKET_MAGIC_CLIENT, sizeof(pkth->magic)))
         return;
 
-    switch (pkth->type) {
-    case PACKET_DATA:
-        /* handle a data packet. */
-        handle_server_data(client, &echo);
-        break;
-
-    case PACKET_KEEP_ALIVE:
-        /* handle a keep-alive request packet. */
-        handle_keep_alive_request(client, &echo);
-        break;
-
-    case PACKET_CONNECTION_REQUEST:
+    if (pkth->type == PACKET_CONNECTION_REQUEST) {
         /* handle a connection request packet. */
-        handle_connection_request(client, &echo);
-        break;
+        handle_connection_request(client);
+    } else {
+        /* we're only expecting packets from the client. */
+        if (!client->linkip || skt->buf->iph.saddr != client->linkip)
+            return;
 
-    case PACKET_PUNCHTHRU:
-        /* handle a punch-thru packet. */
-        handle_punchthru(client, &echo);
-        break;
+        switch (pkth->type) {
+        case PACKET_DATA:
+            /* handle a data packet. */
+            handle_server_data(client, size);
+            break;
+
+        case PACKET_KEEP_ALIVE:
+            /* handle a keep-alive request packet. */
+            handle_keep_alive_request(client);
+            break;
+
+        case PACKET_PUNCHTHRU:
+            /* handle a punch-thru packet. */
+            handle_punchthru(client);
+            break;
+        }
     }
 }
 
@@ -103,16 +107,14 @@ static void handle_tunnel_data(struct peer *client)
     pkth->type = PACKET_DATA;
 
     /* send the encapsulated frame to the client. */
-    struct echo echo;
-    echo.size = framesize;
-    echo.id = client->nextid;
-    echo.seq = client->punchthru[client->punchthru_idx++];
-    echo.targetip = client->linkip;
+    struct icmphdr *icmph = &skt->buf->icmph;
+    icmph->un.echo.id = client->nextid;
+    icmph->un.echo.sequence = client->punchthru[client->punchthru_idx++];
 
     if (!(client->punchthru_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW))
         client->punchthru_wrap = 0;
 
-    send_echo(skt, &echo);
+    send_echo(skt, client->linkip, framesize);
 }
 
 static void handle_timeout(struct peer *client)

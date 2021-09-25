@@ -82,14 +82,13 @@ int open_echo_skt(struct echo_skt *skt, int mtu, int ttl, int client)
     return 0;
 }
 
-int send_echo(struct echo_skt *skt, struct echo *echo)
+int send_echo(struct echo_skt *skt, uint32_t targetip, int size)
 {
     ssize_t xfer;
-    int size = echo->size;
 
     struct sockaddr_in dest;
     dest.sin_family = AF_INET;
-    dest.sin_addr.s_addr = echo->targetip;
+    dest.sin_addr.s_addr = targetip;
     dest.sin_port = 0;  /* for valgrind. */
 
     xfer = sizeof(skt->buf->icmph) + sizeof(skt->buf->pkth) + size;
@@ -98,8 +97,6 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
     struct icmphdr *icmph = &skt->buf->icmph;
     icmph->type = skt->client ? ICMP_ECHO : ICMP_ECHOREPLY;
     icmph->code = 0;
-    icmph->un.echo.id = echo->id;
-    icmph->un.echo.sequence = echo->seq;
     icmph->checksum = 0;
     icmph->checksum = checksum(icmph, xfer);
 
@@ -119,7 +116,7 @@ static inline int echo_supported(struct echo_skt *skt, int type)
            (type == ICMP_ECHO && !skt->client);
 }
 
-int receive_echo(struct echo_skt *skt, struct echo *echo)
+int receive_echo(struct echo_skt *skt)
 {
     ssize_t xfer;
 
@@ -135,10 +132,16 @@ int receive_echo(struct echo_skt *skt, struct echo *echo)
     }
 
     if (xfer < (int)sizeof(*skt->buf))
-        return -1;  /* bad packet size. */
+        return -1; /* bad packet size. */
 
-    if (skt->buf->iph.ttl < skt->ttl)
-        return -1;  /* far away than number of hops specified. */
+    /* parse ip header. */
+    const struct iphdr *iph = &skt->buf->iph;
+
+    if (iph->ttl < skt->ttl)
+        return -1; /* far away than number of hops specified. */
+
+    if (iph->saddr != source.sin_addr.s_addr)
+        return -1; /* never happens. */
 
     /* parse the icmp header. */
     const struct icmphdr *icmph = &skt->buf->icmph;
@@ -148,11 +151,6 @@ int receive_echo(struct echo_skt *skt, struct echo *echo)
 
     if (icmph->code != 0)
         return -1; /* unexpected packet code. */
-
-    echo->size = xfer - sizeof(*skt->buf);
-    echo->id = icmph->un.echo.id;
-    echo->seq = icmph->un.echo.sequence;
-    echo->sourceip = source.sin_addr.s_addr;
 
     return xfer - sizeof(*skt->buf);
 }

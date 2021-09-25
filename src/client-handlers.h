@@ -28,10 +28,9 @@
 #define ICMPTUNNEL_CLIENT_HANDLERS_H
 
 struct peer;
-struct echo;
 
 /* handle a data packet. */
-void handle_client_data(struct peer *server, struct echo *response);
+void handle_client_data(struct peer *server, int framesize);
 
 /* handle a keep-alive packet. */
 void handle_keep_alive_response(struct peer *server);
@@ -43,24 +42,24 @@ void handle_connection_accept(struct peer *server);
 void handle_server_full(struct peer *server);
 
 /* send a message to the server. */
-void send_message(struct peer *server, int pkttype);
+int send_message(struct peer *server, int pkttype, int size);
 
 /* send a connection request to the server. */
 static inline void send_connection_request(struct peer *server)
 {
-    send_message(server, PACKET_CONNECTION_REQUEST);
+    send_message(server, PACKET_CONNECTION_REQUEST, 0);
 }
 
 /* send a punchthru packet. */
 static inline void send_punchthru(struct peer *server)
 {
-    send_message(server, PACKET_PUNCHTHRU);
+    send_message(server, PACKET_PUNCHTHRU, 0);
 }
 
 /* send a keep-alive request to the server. */
 static inline void send_keep_alive(struct peer *server)
 {
-    send_message(server, PACKET_KEEP_ALIVE);
+    send_message(server, PACKET_KEEP_ALIVE, 0);
 }
 
 #endif

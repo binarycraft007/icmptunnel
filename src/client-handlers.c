@@ -24,8 +24,11 @@
  *  SOFTWARE.
  */
 
+#include <netinet/ip.h>
+#include <netinet/ip_icmp.h>
 #include <arpa/inet.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -39,11 +42,10 @@
 #include "forwarder.h"
 #include "client-handlers.h"
 
-void handle_client_data(struct peer *server, struct echo *response)
+void handle_client_data(struct peer *server, int framesize)
 {
     struct echo_skt *skt = &server->skt;
     struct tun_device *device = &server->device;
-    int framesize = response->size;
 
     /* if we're not connected then drop the packet. */
     if (!server->connected)
@@ -114,7 +116,7 @@ void handle_server_full(struct peer *server)
     stop();
 }
 
-void send_message(struct peer *server, int pkttype)
+int send_message(struct peer *server, int pkttype, int size)
 {
     struct echo_skt *skt = &server->skt;
 
@@ -124,15 +126,13 @@ void send_message(struct peer *server, int pkttype)
     pkth->reserved = 0;
     pkth->type = pkttype;
 
-    /* send the request. */
-    struct echo request;
-    request.size = 0;
-    request.id = server->nextid;
-    request.seq = server->nextseq;
-    request.targetip = server->linkip;
+    /* send packet. */
+    struct icmphdr *icmph = &skt->buf->icmph;
+    icmph->un.echo.id = server->nextid;
+    icmph->un.echo.sequence = server->nextseq;
 
     if (!opts.emulation)
         server->nextseq = htons(ntohs(server->nextseq) + 1);
 
-    send_echo(skt, &request);
+    return send_echo(skt, server->linkip, size);
 }
