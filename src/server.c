@@ -45,16 +45,16 @@ static void handle_icmp_packet(struct peer *client)
     struct echo echo;
 
     /* receive the packet. */
-    if (receive_echo(skt, &echo) != 0)
+    if (receive_echo(skt, &echo))
         return;
 
     /* check the header magic. */
-    const struct packet_header *header = &skt->buf->pkth;
+    const struct packet_header *pkth = &skt->buf->pkth;
 
-    if (memcmp(header->magic, PACKET_MAGIC_CLIENT, sizeof(header->magic)) != 0)
+    if (memcmp(pkth->magic, PACKET_MAGIC_CLIENT, sizeof(pkth->magic)))
         return;
 
-    switch (header->type) {
+    switch (pkth->type) {
     case PACKET_DATA:
         /* handle a data packet. */
         handle_server_data(client, &echo);
@@ -101,10 +101,10 @@ static void handle_tunnel_data(struct peer *client)
             return;
 
     /* write a data packet. */
-    struct packet_header *header = &skt->buf->pkth;
-    memcpy(header->magic, PACKET_MAGIC_SERVER, sizeof(header->magic));
-    header->reserved = 0;
-    header->type = PACKET_DATA;
+    struct packet_header *pkth = &skt->buf->pkth;
+    memcpy(pkth->magic, PACKET_MAGIC_SERVER, sizeof(pkth->magic));
+    pkth->reserved = 0;
+    pkth->type = PACKET_DATA;
 
     /* send the encapsulated frame to the client. */
     struct echo echo;

@@ -119,10 +119,10 @@ void send_message(struct peer *server, int pkttype)
     struct echo_skt *skt = &server->skt;
 
     /* write a connection request packet. */
-    struct packet_header *header = &skt->buf->pkth;
-    memcpy(header->magic, PACKET_MAGIC_CLIENT, sizeof(header->magic));
-    header->reserved = 0;
-    header->type = pkttype;
+    struct packet_header *pkth = &skt->buf->pkth;
+    memcpy(pkth->magic, PACKET_MAGIC_CLIENT, sizeof(pkth->magic));
+    pkth->reserved = 0;
+    pkth->type = pkttype;
 
     /* send the request. */
     struct echo request;

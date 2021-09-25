@@ -63,10 +63,10 @@ void handle_keep_alive_request(struct peer *client, struct echo *request)
         return;
 
     /* write a keep-alive response. */
-    struct packet_header *header = &skt->buf->pkth;
-    memcpy(header->magic, PACKET_MAGIC_SERVER, sizeof(header->magic));
-    header->reserved = 0;
-    header->type = PACKET_KEEP_ALIVE;
+    struct packet_header *pkth = &skt->buf->pkth;
+    memcpy(pkth->magic, PACKET_MAGIC_SERVER, sizeof(pkth->magic));
+    pkth->reserved = 0;
+    pkth->type = PACKET_KEEP_ALIVE;
 
     /* send the response to the client. */
     struct echo response;
@@ -86,16 +86,16 @@ void handle_connection_request(struct peer *client, struct echo *request)
     struct echo_skt *skt = &client->skt;
     char *verdict, ip[sizeof("255.255.255.255")];
 
-    struct packet_header *header = &skt->buf->pkth;
-    memcpy(header->magic, PACKET_MAGIC_SERVER, sizeof(struct packet_header));
-    header->reserved = 0;
+    struct packet_header *pkth = &skt->buf->pkth;
+    memcpy(pkth->magic, PACKET_MAGIC_SERVER, sizeof(pkth->magic));
+    pkth->reserved = 0;
 
     /* is a client already connected? */
     if (client->linkip) {
-        header->type = PACKET_SERVER_FULL;
+        pkth->type = PACKET_SERVER_FULL;
         verdict = "ignoring";
     } else {
-        header->type = PACKET_CONNECTION_ACCEPT;
+        pkth->type = PACKET_CONNECTION_ACCEPT;
         verdict = "accepting";
 
         client->seconds = 0;

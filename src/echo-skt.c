@@ -71,7 +71,7 @@ int open_echo_skt(struct echo_skt *skt, int mtu, int ttl, int client)
     }
 
     /* calculate the buffer size required to encapsulate this payload. */
-    skt->bufsize = mtu + sizeof(struct echo_buf);
+    skt->bufsize = mtu + sizeof(*skt->buf);
 
     /* allocate the buffer. */
     if ((skt->buf = malloc(skt->bufsize)) == NULL) {
@@ -91,20 +91,20 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
     dest.sin_addr.s_addr = echo->targetip;
     dest.sin_port = 0;  /* for valgrind. */
 
-    xfer = sizeof(struct icmphdr) + sizeof(struct packet_header) +  echo->size;
+    xfer = sizeof(skt->buf->icmph) + sizeof(skt->buf->pkth) + echo->size;
 
     /* write the icmp header. */
-    struct icmphdr *header = &skt->buf->icmph;
-    header->type = skt->client ? ICMP_ECHO : ICMP_ECHOREPLY;
-    header->code = 0;
-    header->un.echo.id = echo->id;
-    header->un.echo.sequence = echo->seq;
-    header->checksum = 0;
-    header->checksum = checksum(header, xfer);
+    struct icmphdr *icmph = &skt->buf->icmph;
+    icmph->type = skt->client ? ICMP_ECHO : ICMP_ECHOREPLY;
+    icmph->code = 0;
+    icmph->un.echo.id = echo->id;
+    icmph->un.echo.sequence = echo->seq;
+    icmph->checksum = 0;
+    icmph->checksum = checksum(icmph, xfer);
 
     /* send the packet. */
-    xfer = sendto(skt->fd, header, xfer, 0,
-                  (struct sockaddr *)&dest, sizeof(struct sockaddr_in));
+    xfer = sendto(skt->fd, icmph, xfer, 0,
+                  (struct sockaddr *)&dest, sizeof(dest));
     if (xfer < 0) {
         fprintf(stderr, "unable to send icmp packet: %s\n", strerror(errno));
         return 1;
@@ -124,7 +124,7 @@ int receive_echo(struct echo_skt *skt, struct echo *echo)
     ssize_t xfer;
 
     struct sockaddr_in source;
-    socklen_t source_size = sizeof(struct sockaddr_in);
+    socklen_t source_size = sizeof(source);
 
     /* receive a packet. */
     xfer = recvfrom(skt->fd, skt->buf, skt->bufsize, 0,
@@ -134,24 +134,24 @@ int receive_echo(struct echo_skt *skt, struct echo *echo)
         return 1;
     }
 
-    if (xfer < (int)sizeof(struct echo_buf))
+    if (xfer < (int)sizeof(*skt->buf))
         return 1;  /* bad packet size. */
 
     if (skt->buf->iph.ttl < skt->ttl)
         return 1;  /* far away than number of hops specified. */
 
     /* parse the icmp header. */
-    const struct icmphdr *header = &skt->buf->icmph;
+    const struct icmphdr *icmph = &skt->buf->icmph;
 
-    if (skt->filter && !echo_supported(skt, header->type))
+    if (skt->filter && !echo_supported(skt, icmph->type))
         return 1; /* unexpected packet type. */
 
-    if (header->code != 0)
+    if (icmph->code != 0)
         return 1; /* unexpected packet code. */
 
-    echo->size = xfer - sizeof(struct echo_buf);
-    echo->id = header->un.echo.id;
-    echo->seq = header->un.echo.sequence;
+    echo->size = xfer - sizeof(*skt->buf);
+    echo->id = icmph->un.echo.id;
+    echo->seq = icmph->un.echo.sequence;
     echo->sourceip = source.sin_addr.s_addr;
 
     return 0;
