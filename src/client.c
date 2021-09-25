@@ -47,7 +47,7 @@ static void handle_icmp_packet(struct peer *server)
     struct echo echo;
 
     /* receive the packet. */
-    if (receive_echo(skt, &echo))
+    if (receive_echo(skt, &echo) < 0)
         return;
 
     /* we're only expecting packets from the server. */
@@ -90,15 +90,11 @@ static void handle_tunnel_data(struct peer *server)
     int framesize;
 
     /* read the frame. */
-    if (read_tun_device(device, skt->buf->payload, &framesize))
+    if ((framesize = read_tun_device(device, skt->buf->payload)) <= 0)
         return;
 
     /* if we're not connected then drop the frame. */
     if (!server->connected)
-        return;
-
-    /* do not send empty data packets if any. */
-    if (!framesize)
         return;
 
     /* write a data packet. */
@@ -117,7 +113,7 @@ static void handle_tunnel_data(struct peer *server)
     if (!opts.emulation)
         server->nextseq = htons(ntohs(server->nextseq) + 1);
 
-    if (send_echo(skt, &echo))
+    if (send_echo(skt, &echo) < 0)
         return;
 
     if (device->iopkts > 0)
@@ -171,15 +167,15 @@ int client(const char *hostname)
     int ret = 1;
 
     /* resolve the server hostname. */
-    if (resolve(hostname, &server.linkip) != 0)
+    if (resolve(hostname, &server.linkip) < 0)
         goto err_out;
 
     /* open an echo socket. */
-    if (open_echo_skt(skt, opts.mtu, opts.ttl, 1) != 0)
+    if (open_echo_skt(skt, opts.mtu, opts.ttl, 1) < 0)
         goto err_out;
 
     /* open a tunnel interface. */
-    if (open_tun_device(device, opts.mtu) != 0)
+    if (open_tun_device(device, opts.mtu) < 0)
         goto err_close_skt;
 
     /* choose initial icmp id and sequence numbers. */
@@ -197,7 +193,7 @@ int client(const char *hostname)
     send_connection_request(&server);
 
     /* run the packet forwarding loop. */
-    ret = forward(&server, &handlers);
+    ret = forward(&server, &handlers) < 0;
 
     close_tun_device(device);
 err_close_skt:

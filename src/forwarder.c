@@ -69,7 +69,7 @@ int forward(struct peer *peer, const struct handlers *handlers)
             if (!running)
                 break;
             fprintf(stderr, "unable to select() on fds: %s\n", strerror(errno));
-            return 1;
+            return -1;
         }
         /* did we time out? */
         if (ret == 0) {

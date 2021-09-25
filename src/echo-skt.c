@@ -46,7 +46,7 @@ int open_echo_skt(struct echo_skt *skt, int mtu, int ttl, int client)
     /* open the icmp socket. */
     if ((skt->fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
         fprintf(stderr, "unable to open icmp socket: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     /* configure kernel ICMP filters. */
@@ -66,7 +66,7 @@ int open_echo_skt(struct echo_skt *skt, int mtu, int ttl, int client)
 
         if (setsockopt(skt->fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) {
             fprintf(stderr, "unable to enable ttl security mechanism\n");
-            return 1;
+            return -1;
         }
     }
 
@@ -76,7 +76,7 @@ int open_echo_skt(struct echo_skt *skt, int mtu, int ttl, int client)
     /* allocate the buffer. */
     if ((skt->buf = malloc(skt->bufsize)) == NULL) {
         fprintf(stderr, "unable to allocate icmp tx/rx buffers: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -85,13 +85,14 @@ int open_echo_skt(struct echo_skt *skt, int mtu, int ttl, int client)
 int send_echo(struct echo_skt *skt, struct echo *echo)
 {
     ssize_t xfer;
+    int size = echo->size;
 
     struct sockaddr_in dest;
     dest.sin_family = AF_INET;
     dest.sin_addr.s_addr = echo->targetip;
     dest.sin_port = 0;  /* for valgrind. */
 
-    xfer = sizeof(skt->buf->icmph) + sizeof(skt->buf->pkth) + echo->size;
+    xfer = sizeof(skt->buf->icmph) + sizeof(skt->buf->pkth) + size;
 
     /* write the icmp header. */
     struct icmphdr *icmph = &skt->buf->icmph;
@@ -103,14 +104,13 @@ int send_echo(struct echo_skt *skt, struct echo *echo)
     icmph->checksum = checksum(icmph, xfer);
 
     /* send the packet. */
-    xfer = sendto(skt->fd, icmph, xfer, 0,
-                  (struct sockaddr *)&dest, sizeof(dest));
-    if (xfer < 0) {
+    if (sendto(skt->fd, icmph, xfer, 0,
+               (struct sockaddr *)&dest, sizeof(dest)) != xfer) {
         fprintf(stderr, "unable to send icmp packet: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
-    return 0;
+    return size;
 }
 
 static inline int echo_supported(struct echo_skt *skt, int type)
@@ -131,30 +131,30 @@ int receive_echo(struct echo_skt *skt, struct echo *echo)
                     (struct sockaddr *)&source, &source_size);
     if (xfer < 0) {
         fprintf(stderr, "unable to receive icmp packet: %s\n", strerror(errno));
-        return 1;
+        return -1;
     }
 
     if (xfer < (int)sizeof(*skt->buf))
-        return 1;  /* bad packet size. */
+        return -1;  /* bad packet size. */
 
     if (skt->buf->iph.ttl < skt->ttl)
-        return 1;  /* far away than number of hops specified. */
+        return -1;  /* far away than number of hops specified. */
 
     /* parse the icmp header. */
     const struct icmphdr *icmph = &skt->buf->icmph;
 
     if (skt->filter && !echo_supported(skt, icmph->type))
-        return 1; /* unexpected packet type. */
+        return -1; /* unexpected packet type. */
 
     if (icmph->code != 0)
-        return 1; /* unexpected packet code. */
+        return -1; /* unexpected packet code. */
 
     echo->size = xfer - sizeof(*skt->buf);
     echo->id = icmph->un.echo.id;
     echo->seq = icmph->un.echo.sequence;
     echo->sourceip = source.sin_addr.s_addr;
 
-    return 0;
+    return xfer - sizeof(*skt->buf);
 }
 
 void close_echo_skt(struct echo_skt *skt)

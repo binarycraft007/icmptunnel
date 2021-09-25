@@ -55,7 +55,7 @@ int open_tun_device(struct tun_device *device, int mtu);
 int write_tun_device(struct tun_device *device, const void *buf, int size);
 
 /* read from the device. */
-int read_tun_device(struct tun_device *device, void *buf, int *size);
+int read_tun_device(struct tun_device *device, void *buf);
 
 /* close the device. */
 void close_tun_device(struct tun_device *device);

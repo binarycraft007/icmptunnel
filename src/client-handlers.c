@@ -54,7 +54,7 @@ void handle_client_data(struct peer *server, struct echo *response)
         return;
 
     /* write the frame to the tunnel interface. */
-    if (write_tun_device(device, skt->buf->payload, framesize))
+    if (write_tun_device(device, skt->buf->payload, framesize) < 0)
         return;
 
     server->seconds = 0;

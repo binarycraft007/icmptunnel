@@ -41,7 +41,7 @@ int resolve(const char *hostname, uint32_t *address)
 
         if (!h) {
             fprintf(stderr, "unable to resolve: %s\n", hostname);
-            return 1;
+            return -1;
         }
 
         *address = *((uint32_t *)h->h_addr_list[0]);

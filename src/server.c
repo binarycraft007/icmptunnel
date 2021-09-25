@@ -45,7 +45,7 @@ static void handle_icmp_packet(struct peer *client)
     struct echo echo;
 
     /* receive the packet. */
-    if (receive_echo(skt, &echo))
+    if (receive_echo(skt, &echo) < 0)
         return;
 
     /* check the header magic. */
@@ -84,15 +84,11 @@ static void handle_tunnel_data(struct peer *client)
     int framesize;
 
     /* read the frame. */
-    if (read_tun_device(device, skt->buf->payload, &framesize))
+    if ((framesize = read_tun_device(device, skt->buf->payload)) <= 0)
         return;
 
     /* if no client is connected then drop the frame. */
     if (!client->linkip)
-        return;
-
-    /* do not send empty data packets if any. */
-    if (!framesize)
         return;
 
     /* if no punchthru entries then drop the frame. */
@@ -152,11 +148,11 @@ int server(void)
     int ret = 1;
 
     /* open an echo socket. */
-    if (open_echo_skt(skt, opts.mtu, opts.ttl, 0) != 0)
+    if (open_echo_skt(skt, opts.mtu, opts.ttl, 0) < 0)
         goto err_out;
 
     /* open a tunnel interface. */
-    if (open_tun_device(device, opts.mtu) != 0)
+    if (open_tun_device(device, opts.mtu) < 0)
         goto err_close_skt;
 
     /* fork and run as a daemon if needed. */
@@ -173,7 +169,7 @@ int server(void)
     client.timeouts = 0;
 
     /* run the packet forwarding loop. */
-    ret = forward(&client, &handlers);
+    ret = forward(&client, &handlers) < 0;
 
 err_close_tun:
     close_tun_device(device);
