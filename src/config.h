@@ -28,7 +28,7 @@
 #define ICMPTUNNEL_CONFIG_H
 
 /* program version. */
-#define ICMPTUNNEL_VERSION "0.1-beta"
+#define ICMPTUNNEL_VERSION "0.2-beta"
 
 /* unprivileged user to switch to. */
 #define ICMPTUNNEL_USER "nobody"

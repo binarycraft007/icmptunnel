@@ -10,7 +10,7 @@ MANPAGE = icmptunnel.8
 SOURCES = $(shell echo src/*.c)
 HEADERS = $(shell echo src/*.h)
 OBJECTS = $(SOURCES:.c=.o)
-VERSION = 0.1-beta
+VERSION = 0.2-beta
 
 # installation paths.
 PREFIX  = $(DESTDIR)/usr/local
