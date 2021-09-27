@@ -27,6 +27,7 @@
 #include <netinet/if_ether.h>
 
 #include <getopt.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,6 +97,24 @@ static void usage(const char *program)
     exit(1);
 }
 
+static void fatal(const char *fmt, ...)
+{
+    va_list ap;
+
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+
+    exit(1);
+}
+
+static void optrange(char c, const char *optname,
+                     unsigned int min, unsigned int max)
+{
+    fatal("for -%c option <%s> must be within %u ... %u range.\n",
+          c, optname, min, max);
+}
+
 static void signalhandler(int sig)
 {
     /* unused variable. */
@@ -144,11 +163,8 @@ int main(int argc, char *argv[])
             break;
         case 'm':
             opts.mtu = atoi(optarg);
-            if (opts.mtu < ETH_MIN_MTU || opts.mtu > ETH_MAX_MTU) {
-                fprintf(stderr, "for -m option mtu must be within %u ... %u range\n",
-                        ETH_MIN_MTU, ETH_MAX_MTU);
-                exit(1);
-            }
+            if (opts.mtu < ETH_MIN_MTU || opts.mtu > ETH_MAX_MTU)
+                optrange('m', "mtu", ETH_MIN_MTU, ETH_MAX_MTU);
             break;
         case 'e':
             opts.emulation = 1;
@@ -161,17 +177,13 @@ int main(int argc, char *argv[])
             break;
         case 't':
             opts.ttl = atoi(optarg);
-            if (opts.ttl > 254) {
-                fprintf(stderr, "for -t option hops must be within 0 ... 254\n");
-                exit(1);
-            }
+            if (opts.ttl > 254)
+                optrange('t', "hops", 0, 254);
             break;
         case 'i':
             opts.id = atoi(optarg);
-            if (opts.id > UINT16_MAX) {
-                fprintf(stderr, "for -i option id must be within 0 ... 65535\n");
-                exit(1);
-            }
+            if (opts.id > UINT16_MAX)
+                optrange('i', "id", 0, UINT16_MAX);
             break;
         case '?':
             /* fall-through. */
