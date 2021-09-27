@@ -46,6 +46,9 @@ struct options
 
     /* hops between client and server. */
     unsigned int ttl;
+
+    /* ICMP Echo Id field for multi-instance. */
+    unsigned int id;
 };
 
 extern struct options opts;

@@ -75,6 +75,7 @@ void handle_connection_request(struct peer *client)
 {
     struct echo_skt *skt = &client->skt;
     uint32_t sourceip = skt->buf->iph.saddr;
+    uint32_t id = skt->buf->icmph.un.echo.id;
     char *verdict, ip[sizeof("255.255.255.255")];
 
     struct packet_header *pkth = &skt->buf->pkth;
@@ -82,7 +83,6 @@ void handle_connection_request(struct peer *client)
     pkth->reserved = 0;
 
     /* is a client already connected? */
-    struct icmphdr *icmph = &skt->buf->icmph;
     if (client->linkip) {
         pkth->type = PACKET_SERVER_FULL;
         verdict = "ignoring";
@@ -91,7 +91,8 @@ void handle_connection_request(struct peer *client)
         verdict = "accepting";
 
         /* store the id number. */
-        client->nextid = icmph->un.echo.id;
+        if (!client->strict_nextid)
+            client->nextid = id;
 
         client->seconds = 0;
         client->timeouts = 0;
@@ -102,7 +103,8 @@ void handle_connection_request(struct peer *client)
     }
 
     inet_ntop(AF_INET, &sourceip, ip, sizeof(ip));
-    fprintf(stderr, "%s connection from %s\n", verdict, ip);
+    fprintf(stderr, "%s connection from %s with id %d\n",
+            verdict, ip, ntohs(id));
 
     /* send the response. */
     send_echo(skt, sourceip, 0);

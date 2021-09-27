@@ -20,6 +20,8 @@ deliver to tunnel device. The only side effect in this case is that in non-emula
 these replies will have no effect: firewall will see request from client and reply from kernel. It is advised to disable ICMP responses
 on server.
 
+Next, to run multiple instances of icmptunnel on same host you need to specify -i option and provide (random) instance id that will be used in ICMP echo field to distinguish packets between instances.
+
 On the server-side, start icmptunnel in server mode, and assign an IP address to the new tunnel interface.
 
     # ./icmptunnel –s

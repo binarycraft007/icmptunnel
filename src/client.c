@@ -26,6 +26,7 @@
 
 #include <arpa/inet.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -168,7 +169,7 @@ int client(const char *hostname)
         goto err_close_skt;
 
     /* choose initial icmp id and sequence numbers. */
-    server.nextid = htons(rand());
+    server.nextid = htons(opts.id > UINT16_MAX ? (uint32_t)rand() : opts.id);
     server.nextseq = htons(rand());
 
     /* mark as not connected to server. */

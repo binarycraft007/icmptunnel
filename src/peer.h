@@ -48,8 +48,10 @@ struct peer
 #define nextseq u1.c.nextseq
         } c;
         struct {
-            uint16_t punchthru_wrap;
+            uint8_t punchthru_wrap;
+            uint8_t strict_nextid;
 #define punchthru_wrap u1.s.punchthru_wrap
+#define strict_nextid u1.s.strict_nextid
         } s;
     } u1;
 

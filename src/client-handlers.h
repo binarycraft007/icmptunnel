@@ -45,10 +45,7 @@ void handle_server_full(struct peer *server);
 int send_message(struct peer *server, int pkttype, int size);
 
 /* send a connection request to the server. */
-static inline void send_connection_request(struct peer *server)
-{
-    send_message(server, PACKET_CONNECTION_REQUEST, 0);
-}
+void send_connection_request(struct peer *server);
 
 /* send a punchthru packet. */
 static inline void send_punchthru(struct peer *server)

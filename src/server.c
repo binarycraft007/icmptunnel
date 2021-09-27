@@ -24,6 +24,7 @@
  *  SOFTWARE.
  */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -55,6 +56,11 @@ static void handle_icmp_packet(struct peer *client)
         return;
 
     if (pkth->type == PACKET_CONNECTION_REQUEST) {
+        /* we're only expecting packets with specified id. */
+        if (client->strict_nextid &&
+            client->nextid != skt->buf->icmph.un.echo.id)
+            return;
+
         /* handle a connection request packet. */
         handle_connection_request(client);
     } else {
@@ -169,6 +175,14 @@ int server(void)
 
     /* mark as not connected with client. */
     client.linkip = 0;
+
+    /* accept packets only for given instance. */
+    if (opts.id > UINT16_MAX) {
+        client.strict_nextid = 0;
+    } else {
+        client.strict_nextid = 1;
+        client.nextid = htons(opts.id);
+    }
 
     /* initialize keepalive seconds and timeout retries. */
     client.seconds = 0;

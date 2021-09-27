@@ -136,3 +136,10 @@ int send_message(struct peer *server, int pkttype, int size)
 
     return send_echo(skt, server->linkip, size);
 }
+
+void send_connection_request(struct peer *server)
+{
+    fprintf(stderr, "trying to connect using id %d ...\n",
+            htons(server->nextid));
+    send_message(server, PACKET_CONNECTION_REQUEST, 0);
+}

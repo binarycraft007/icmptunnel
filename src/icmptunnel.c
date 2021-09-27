@@ -27,6 +27,7 @@
 #include <netinet/if_ether.h>
 
 #include <getopt.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,6 +77,8 @@ static void help(const char *program)
     fprintf(stderr, "  -s               run in server-mode.\n");
     fprintf(stderr, "  -t <hops>        use ttl security mode.\n");
     fprintf(stderr, "                   the default is to not use this mode.\n");
+    fprintf(stderr, "  -i <id>          set instance id used in ICMP request/reply id field.\n");
+    fprintf(stderr, "                   the default is to use generated on startup.\n");
     fprintf(stderr, "  server           run in client-mode, using the server ip/hostname.\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Note that process requires CAP_NET_RAW to open ICMP raw sockets\n");
@@ -108,6 +111,7 @@ struct options opts = {
     ICMPTUNNEL_EMULATION,
     ICMPTUNNEL_DAEMON,
     255,
+    UINT16_MAX + 1,
 };
 
 int main(int argc, char *argv[])
@@ -119,7 +123,7 @@ int main(int argc, char *argv[])
     /* parse the option arguments. */
     opterr = 0;
     int opt;
-    while ((opt = getopt(argc, argv, "vhk:r:m:edst:")) != -1) {
+    while ((opt = getopt(argc, argv, "vhk:r:m:edst:i:")) != -1) {
         switch (opt) {
         case 'v':
             version();
@@ -159,6 +163,13 @@ int main(int argc, char *argv[])
             opts.ttl = atoi(optarg);
             if (opts.ttl > 254) {
                 fprintf(stderr, "for -t option hops must be within 0 ... 254\n");
+                exit(1);
+            }
+            break;
+        case 'i':
+            opts.id = atoi(optarg);
+            if (opts.id > UINT16_MAX) {
+                fprintf(stderr, "for -i option id must be within 0 ... 65535\n");
                 exit(1);
             }
             break;
