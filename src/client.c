@@ -35,6 +35,7 @@
 #include "client.h"
 #include "peer.h"
 #include "resolve.h"
+#include "privs.h"
 #include "protocol.h"
 #include "echo-skt.h"
 #include "tun-device.h"
@@ -168,6 +169,10 @@ int client(const char *hostname)
     if (open_tun_device(device, opts.mtu) < 0)
         goto err_close_skt;
 
+    /* drop privileges. */
+    if (drop_privs(opts.user) < 0)
+        goto err_close_tun;
+
     /* choose initial icmp id and sequence numbers. */
     server.nextid = htons(opts.id > UINT16_MAX ? (uint32_t)rand() : opts.id);
     server.nextseq = htons(rand());
@@ -185,6 +190,7 @@ int client(const char *hostname)
     /* run the packet forwarding loop. */
     ret = forward(&server, &handlers) < 0;
 
+err_close_tun:
     close_tun_device(device);
 err_close_skt:
     close_echo_skt(skt);

@@ -29,6 +29,9 @@
 
 struct options
 {
+    /* unprivileged user to switch to. */
+    const char *user;
+
     /* number of poll intervals between keep-alive packets. */
     unsigned int keepalive;
 

@@ -24,31 +24,43 @@
  *  SOFTWARE.
  */
 
-#ifndef ICMPTUNNEL_CONFIG_H
-#define ICMPTUNNEL_CONFIG_H
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
+#include <unistd.h>
 
-/* program version. */
-#define ICMPTUNNEL_VERSION "0.1-beta"
+int drop_privs(const char *user)
+{
+    /* hope it is found in libc, not in POSIX. */
+    extern int setgroups(size_t n, const gid_t *list);
 
-/* unprivileged user to switch to. */
-#define ICMPTUNNEL_USER "nobody"
+    struct passwd *pw;
+    struct group *gr;
 
-/* default timeout in seconds between keep-alive requests. */
-#define ICMPTUNNEL_TIMEOUT 5
+    if (!user || !*user)
+        return 0;
 
-/* default number of retries before a connection is dropped. */
-#define ICMPTUNNEL_RETRIES 5
+    /* user */
+    pw = getpwnam(user);
+    if (!pw)
+        return -1;
 
-/* default interval between punch-thru packets. */
-#define ICMPTUNNEL_PUNCHTHRU_INTERVAL 1
+    /* group */
+    gr = getgrgid(pw->pw_gid);
+    if (!gr)
+        return -1;
 
-/* default window size of punch-thru packets. */
-#define ICMPTUNNEL_PUNCHTHRU_WINDOW 8
+    /* main group */
+    if (setgid(pw->pw_gid) < 0)
+        return -1;
 
-/* default to standard linux behaviour, do not emulate windows ping. */
-#define ICMPTUNNEL_EMULATION 0
+    /* supplementary group */
+    if (setgroups(1, &pw->pw_gid) < 0)
+        return -1;
 
-/* default to running in the foreground. */
-#define ICMPTUNNEL_DAEMON 0
+    /* user */
+    if (setuid(pw->pw_uid) < 0)
+        return -1;
 
-#endif
+    return 0;
+}

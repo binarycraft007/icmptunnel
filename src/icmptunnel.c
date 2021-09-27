@@ -68,6 +68,8 @@ static void help(const char *program)
 "usage: %s [options] -s|server\n\n"
 "  -v               print version and exit.\n"
 "  -h               print help and exit.\n"
+"  -u <user>        user to switch after opening tun device and socket.\n"
+"                   the default user is %s.\n"
 "  -k <interval>    interval between keep-alive packets.\n"
 "                   the default interval is %i seconds.\n"
 "  -r <retries>     packet retry limit before timing out.\n"
@@ -87,7 +89,7 @@ static void help(const char *program)
 "and CAP_NET_ADMIN to manage tun devices. You should run either\n"
 "as root or grant above capabilities (e.g. via POSIX file capabilities)\n"
 "\n",
-            ICMPTUNNEL_VERSION, program,
+            ICMPTUNNEL_VERSION, program, ICMPTUNNEL_USER,
             ICMPTUNNEL_TIMEOUT, ICMPTUNNEL_RETRIES, ICMPTUNNEL_MTU
     );
     exit(0);
@@ -156,6 +158,7 @@ static unsigned int nr_retries(const char *s)
 }
 
 struct options opts = {
+    ICMPTUNNEL_USER,
     ICMPTUNNEL_TIMEOUT,
     ICMPTUNNEL_RETRIES,
     ICMPTUNNEL_MTU,
@@ -174,13 +177,16 @@ int main(int argc, char *argv[])
     /* parse the option arguments. */
     opterr = 0;
     int opt;
-    while ((opt = getopt(argc, argv, "vhk:r:m:edst:i:")) != -1) {
+    while ((opt = getopt(argc, argv, "vhu:k:r:m:edst:i:")) != -1) {
         switch (opt) {
         case 'v':
             version();
             break;
         case 'h':
             help(program);
+            break;
+        case 'u':
+            opts.user = optarg;
             break;
         case 'k':
             opts.keepalive = nr_keepalives(optarg);
@@ -241,6 +247,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "unknown option -- '%s'\n", argv[0]);
         usage(program);
     }
+
+    /* check for non-empty user. */
+    if (!*opts.user)
+        opts.user = ICMPTUNNEL_USER;
 
     /* register the signal handlers. */
     signal(SIGINT, signalhandler);

@@ -24,31 +24,9 @@
  *  SOFTWARE.
  */
 
-#ifndef ICMPTUNNEL_CONFIG_H
-#define ICMPTUNNEL_CONFIG_H
+#ifndef ICMPTUNNEL_PRIVS_H
+#define ICMPTUNNEL_PRIVS_H
 
-/* program version. */
-#define ICMPTUNNEL_VERSION "0.1-beta"
-
-/* unprivileged user to switch to. */
-#define ICMPTUNNEL_USER "nobody"
-
-/* default timeout in seconds between keep-alive requests. */
-#define ICMPTUNNEL_TIMEOUT 5
-
-/* default number of retries before a connection is dropped. */
-#define ICMPTUNNEL_RETRIES 5
-
-/* default interval between punch-thru packets. */
-#define ICMPTUNNEL_PUNCHTHRU_INTERVAL 1
-
-/* default window size of punch-thru packets. */
-#define ICMPTUNNEL_PUNCHTHRU_WINDOW 8
-
-/* default to standard linux behaviour, do not emulate windows ping. */
-#define ICMPTUNNEL_EMULATION 0
-
-/* default to running in the foreground. */
-#define ICMPTUNNEL_DAEMON 0
+int drop_privs(const char *user);
 
 #endif

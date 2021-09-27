@@ -33,6 +33,7 @@
 #include "options.h"
 #include "server.h"
 #include "peer.h"
+#include "privs.h"
 #include "protocol.h"
 #include "echo-skt.h"
 #include "tun-device.h"
@@ -166,6 +167,10 @@ int server(void)
     /* open a tunnel interface. */
     if (open_tun_device(device, opts.mtu) < 0)
         goto err_close_skt;
+
+    /* drop privileges. */
+    if (drop_privs(opts.user) < 0)
+        goto err_close_tun;
 
     /* fork and run as a daemon if needed. */
     if (opts.daemon) {
