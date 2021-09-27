@@ -58,8 +58,12 @@ static void handle_icmp_packet(struct peer *client)
         /* handle a connection request packet. */
         handle_connection_request(client);
     } else {
-        /* we're only expecting packets from the client. */
+        /* we're only expecting packets from the client ... */
         if (!client->linkip || skt->buf->iph.saddr != client->linkip)
+            return;
+
+        /* ... and with id used during connection request. */
+        if (client->nextid != skt->buf->icmph.un.echo.id)
             return;
 
         switch (pkth->type) {

@@ -82,12 +82,16 @@ void handle_connection_request(struct peer *client)
     pkth->reserved = 0;
 
     /* is a client already connected? */
+    struct icmphdr *icmph = &skt->buf->icmph;
     if (client->linkip) {
         pkth->type = PACKET_SERVER_FULL;
         verdict = "ignoring";
     } else {
         pkth->type = PACKET_CONNECTION_ACCEPT;
         verdict = "accepting";
+
+        /* store the id number. */
+        client->nextid = icmph->un.echo.id;
 
         client->seconds = 0;
         client->timeouts = 0;
@@ -107,13 +111,9 @@ void handle_connection_request(struct peer *client)
 /* handle a punch-thru packet. */
 void handle_punchthru(struct peer *client)
 {
-    struct icmphdr *icmph = &client->skt.buf->icmph;
-
-    /* store the id number. */
-    client->nextid = icmph->un.echo.id;
-
     /* store the sequence number. */
-    client->punchthru[client->punchthru_write_idx++] = icmph->un.echo.sequence;
+    client->punchthru[client->punchthru_write_idx++] =
+        client->skt.buf->icmph.un.echo.sequence;
 
     if (!(client->punchthru_write_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW))
         client->punchthru_wrap = 1;

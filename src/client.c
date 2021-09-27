@@ -50,8 +50,12 @@ static void handle_icmp_packet(struct peer *server)
     if ((size = receive_echo(skt)) < 0)
         return;
 
-    /* we're only expecting packets from the server. */
-    if (skt->buf->iph.saddr != server->linkip)
+    /* we're only expecting packets from the server ... */
+    if (server->linkip != skt->buf->iph.saddr)
+        return;
+
+    /* ... and with our id that is used to connect to the server. */
+    if (server->nextid != skt->buf->icmph.un.echo.id)
         return;
 
     /* check the header magic. */
