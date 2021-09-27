@@ -63,38 +63,34 @@ static void version()
 
 static void help(const char *program)
 {
-    fprintf(stderr, "icmptunnel %s.\n", ICMPTUNNEL_VERSION);
-    fprintf(stderr, "usage: %s [options] -s|server\n\n", program);
-    fprintf(stderr, "  -v               print version and exit.\n");
-    fprintf(stderr, "  -h               print help and exit.\n");
-    fprintf(stderr, "  -k <interval>    interval between keep-alive packets.\n");
-    fprintf(stderr, "                   the default interval is %i seconds.\n", ICMPTUNNEL_TIMEOUT);
-    fprintf(stderr, "  -r <retries>     packet retry limit before timing out.\n");
-    fprintf(stderr, "                   the default is %i retries.\n", ICMPTUNNEL_RETRIES);
-    fprintf(stderr, "  -m <mtu>         max frame size of the tunnel interface.\n");
-    fprintf(stderr, "                   the default tunnel mtu is %i bytes.\n", ICMPTUNNEL_MTU);
-    fprintf(stderr, "  -e               emulate the microsoft ping utility.\n");
-    fprintf(stderr, "  -d               run in the background as a daemon.\n");
-    fprintf(stderr, "  -s               run in server-mode.\n");
-    fprintf(stderr, "  -t <hops>        use ttl security mode.\n");
-    fprintf(stderr, "                   the default is to not use this mode.\n");
-    fprintf(stderr, "  -i <id>          set instance id used in ICMP request/reply id field.\n");
-    fprintf(stderr, "                   the default is to use generated on startup.\n");
-    fprintf(stderr, "  server           run in client-mode, using the server ip/hostname.\n");
-    fprintf(stderr, "\n");
-    fprintf(stderr, "Note that process requires CAP_NET_RAW to open ICMP raw sockets\n");
-    fprintf(stderr, "and CAP_NET_ADMIN to manage tun devices. You should run either\n");
-    fprintf(stderr, "as root or grant above capabilities (e.g. via POSIX file capabilities)\n");
-    fprintf(stderr, "\n");
-
+    fprintf(stderr,
+"icmptunnel %s.\n"
+"usage: %s [options] -s|server\n\n"
+"  -v               print version and exit.\n"
+"  -h               print help and exit.\n"
+"  -k <interval>    interval between keep-alive packets.\n"
+"                   the default interval is %i seconds.\n"
+"  -r <retries>     packet retry limit before timing out.\n"
+"                   the default is %i retries.\n"
+"  -m <mtu>         max frame size of the tunnel interface.\n"
+"                   the default tunnel mtu is %i bytes.\n"
+"  -e               emulate the microsoft ping utility.\n"
+"  -d               run in the background as a daemon.\n"
+"  -s               run in server-mode.\n"
+"  -t <hops>        use ttl security mode.\n"
+"                   the default is to not use this mode.\n"
+"  -i <id>          set instance id used in ICMP request/reply id field.\n"
+"                   the default is to use generated on startup.\n"
+"  server           run in client-mode, using the server ip/hostname.\n"
+"\n"
+"Note that process requires CAP_NET_RAW to open ICMP raw sockets\n"
+"and CAP_NET_ADMIN to manage tun devices. You should run either\n"
+"as root or grant above capabilities (e.g. via POSIX file capabilities)\n"
+"\n",
+            ICMPTUNNEL_VERSION, program,
+            ICMPTUNNEL_TIMEOUT, ICMPTUNNEL_RETRIES, ICMPTUNNEL_MTU
+    );
     exit(0);
-}
-
-static void usage(const char *program)
-{
-    fprintf(stderr, "unknown or missing option -- '%c'\n", optopt);
-    fprintf(stderr, "use %s -h for more information.\n", program);
-    exit(1);
 }
 
 static void fatal(const char *fmt, ...)
@@ -106,6 +102,11 @@ static void fatal(const char *fmt, ...)
     va_end(ap);
 
     exit(1);
+}
+
+static void usage(const char *program)
+{
+    fatal("use %s -h for more information.\n", program);
 }
 
 static void optrange(char c, const char *optname,
@@ -214,6 +215,7 @@ int main(int argc, char *argv[])
         case '?':
             /* fall-through. */
         default:
+            fprintf(stderr, "unknown or missing option -- '%c'\n", optopt);
             usage(program);
             break;
         }
@@ -226,8 +228,7 @@ int main(int argc, char *argv[])
     if (!servermode) {
         if (argc < 1) {
             fprintf(stderr, "missing server ip/hostname.\n");
-            fprintf(stderr, "use %s -h for more information.\n", program);
-            return 1;
+            usage(program);
         }
         hostname = argv[0];
 
@@ -238,8 +239,7 @@ int main(int argc, char *argv[])
     /* check for extraneous options. */
     if (argc > 0) {
         fprintf(stderr, "unknown option -- '%s'\n", argv[0]);
-        fprintf(stderr, "use %s -h for more information.\n", program);
-        return 1;
+        usage(program);
     }
 
     /* register the signal handlers. */
