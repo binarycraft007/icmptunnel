@@ -106,6 +106,10 @@ void handle_connection_request(struct peer *client)
     fprintf(stderr, "%s connection from %s with id %d\n",
             verdict, ip, ntohs(id));
 
+    /* do not respond to non-client IPs to hide from probes. */
+    if (client->strict_nextid && client->linkip != sourceip)
+        return;
+
     /* send the response. */
     send_echo(skt, sourceip, 0);
 }
