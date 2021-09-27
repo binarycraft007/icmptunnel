@@ -125,7 +125,7 @@ static void handle_timeout(struct peer *server)
         server->seconds = 0;
 
         /* have we reached the max number of retries? */
-        if (opts.retries != -1 && ++server->timeouts == opts.retries) {
+        if (opts.retries && ++server->timeouts == opts.retries) {
             fprintf(stderr, "connection timed out.\n");
 
             /* stop the packet forwarding loop. */

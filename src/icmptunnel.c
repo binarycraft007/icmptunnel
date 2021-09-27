@@ -123,6 +123,37 @@ static void signalhandler(int sig)
     stop();
 }
 
+static unsigned int nr_keepalives(const char *s)
+{
+    const unsigned int poll_secs = ICMPTUNNEL_PUNCHTHRU_INTERVAL;
+    const unsigned int max_secs = 30;
+    unsigned int k = atoi(s);
+
+    /* use default keepalive interval if
+     *  1) keepalive interval isn't specified (i.e. 0)
+     *  2) too long that state entry may timeout on firewall.
+     */
+    if (!k || k > max_secs)
+        optrange('k', "interval", 1, max_secs);
+
+    /* compiler shall optimize this. */
+    return k / poll_secs + (poll_secs > 1) * (k % poll_secs >= poll_secs / 2);
+}
+
+static unsigned int nr_retries(const char *s)
+{
+    const unsigned int max_retries = 4 * ICMPTUNNEL_RETRIES;
+    unsigned int r = strcmp(optarg, "infinite") ? atoi(s) : 0;
+
+    /* use default retries number if not infinite (i.e. 0) and
+     * 4 times greather than default retry numbers.
+     */
+    if (r && r > max_retries)
+        optrange('r', "retries", 0, max_retries);
+
+    return r;
+}
+
 struct options opts = {
     ICMPTUNNEL_TIMEOUT,
     ICMPTUNNEL_RETRIES,
@@ -151,15 +182,10 @@ int main(int argc, char *argv[])
             help(program);
             break;
         case 'k':
-            opts.keepalive = atoi(optarg);
-            if (!opts.keepalive)
-                opts.keepalive = 1;
+            opts.keepalive = nr_keepalives(optarg);
             break;
         case 'r':
-            if (!strcmp(optarg, "infinite"))
-                opts.retries = -1;
-            else
-                opts.retries = atoi(optarg);
+            opts.retries = nr_retries(optarg);
             break;
         case 'm':
             opts.mtu = atoi(optarg);

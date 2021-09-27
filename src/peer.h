@@ -73,8 +73,8 @@ struct peer
     } u2;
 
     /* number of timeout intervals since last activity. */
-    int seconds;
-    int timeouts;
+    unsigned int seconds;
+    unsigned int timeouts;
 };
 
 #endif

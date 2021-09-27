@@ -31,7 +31,6 @@
 #include <sys/select.h>
 
 #include "config.h"
-#include "options.h"
 #include "peer.h"
 #include "handlers.h"
 #include "echo-skt.h"

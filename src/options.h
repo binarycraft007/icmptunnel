@@ -29,11 +29,11 @@
 
 struct options
 {
-    /* interval between keep-alive packets. */
-    int keepalive;
+    /* number of poll intervals between keep-alive packets. */
+    unsigned int keepalive;
 
     /* number of retries before timing out. */
-    int retries;
+    unsigned int retries;
 
     /* tunnel mtu. */
     unsigned int mtu;

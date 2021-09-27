@@ -137,7 +137,7 @@ static void handle_timeout(struct peer *client)
         client->seconds = 0;
 
         /* have we reached the max number of retries? */
-        if (opts.retries != -1 && ++client->timeouts == opts.retries) {
+        if (opts.retries && ++client->timeouts == opts.retries) {
             fprintf(stderr, "client connection timed out.\n");
 
             client->linkip = 0;
