@@ -110,10 +110,7 @@ void handle_server_full(struct peer *server)
     if (server->connected)
         return;
 
-    fprintf(stderr, "unable to connect: server is full.\n");
-
-    /* stop the packet forwarding loop. */
-    stop();
+    fprintf(stderr, "unable to connect: server is full, retrying.\n");
 }
 
 int send_message(struct peer *server, int pkttype, int size)

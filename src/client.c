@@ -123,22 +123,30 @@ static void handle_timeout(struct peer *server)
 
     /* has the peer timeout elapsed? */
     if (++server->seconds == opts.keepalive) {
+        unsigned int retries =
+            opts.retries ? opts.retries : ICMPTUNNEL_RETRIES;
+
         server->seconds = 0;
 
         /* have we reached the max number of retries? */
-        if (opts.retries && ++server->timeouts == opts.retries) {
+        if (++server->timeouts == retries) {
             fprintf(stderr, "connection timed out.\n");
 
-            /* stop the packet forwarding loop. */
-            stop();
-            return;
+            server->connected = 0;
+            server->timeouts = 0;
+
+            if (opts.retries) {
+                /* stop the packet forwarding loop. */
+                stop();
+                return;
+            }
         }
 
         if (server->connected) {
             /* otherwise, send a keep-alive request. */
             send_keep_alive(server);
         } else {
-           /* if we're still connecting, resend the connection request. */
+            /* if we're still connecting, resend the connection request. */
             send_connection_request(server);
         }
     }
