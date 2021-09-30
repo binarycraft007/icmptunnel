@@ -96,7 +96,6 @@ void handle_connection_request(struct peer *client)
 
         client->seconds = 0;
         client->timeouts = 0;
-        client->punchthru_wrap = 0;
         client->punchthru_idx = 0;
         client->punchthru_write_idx = 0;
         client->linkip = sourceip;
@@ -121,8 +120,7 @@ void handle_punchthru(struct peer *client)
     client->punchthru[client->punchthru_write_idx++] =
         client->skt.buf->icmph.un.echo.sequence;
 
-    if (!(client->punchthru_write_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW))
-        client->punchthru_wrap = 1;
+    client->punchthru_write_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
 
     client->seconds = 0;
     client->timeouts = 0;

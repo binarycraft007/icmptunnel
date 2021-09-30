@@ -106,11 +106,6 @@ static void handle_tunnel_data(struct peer *client)
     if (!client->linkip)
         return;
 
-    /* if no punchthru entries then drop the frame. */
-    if (!client->punchthru_wrap)
-        if (client->punchthru_idx == client->punchthru_write_idx)
-            return;
-
     /* write a data packet. */
     struct packet_header *pkth = &skt->buf->pkth;
     memcpy(pkth->magic, PACKET_MAGIC_SERVER, sizeof(pkth->magic));
@@ -122,8 +117,7 @@ static void handle_tunnel_data(struct peer *client)
     icmph->un.echo.id = client->nextid;
     icmph->un.echo.sequence = client->punchthru[client->punchthru_idx++];
 
-    if (!(client->punchthru_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW))
-        client->punchthru_wrap = 0;
+    client->punchthru_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
 
     send_echo(skt, client->linkip, framesize);
 }
