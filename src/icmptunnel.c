@@ -77,6 +77,7 @@ static void help(const char *program)
 "  -m <mtu>         max frame size of the tunnel interface.\n"
 "                   the default tunnel mtu is %i bytes.\n"
 "  -e               emulate the microsoft ping utility.\n"
+"                   will be negotiated with peer via protocol, default is off.\n"
 "  -d               run in the background as a daemon.\n"
 "  -s               run in server-mode.\n"
 "  -t <hops>        use ttl security mode.\n"

@@ -109,15 +109,18 @@ static void handle_tunnel_data(struct peer *client)
     /* write a data packet. */
     struct packet_header *pkth = &skt->buf->pkth;
     memcpy(pkth->magic, PACKET_MAGIC_SERVER, sizeof(pkth->magic));
-    pkth->reserved = 0;
+    pkth->flags = 0;
     pkth->type = PACKET_DATA;
 
     /* send the encapsulated frame to the client. */
     struct icmphdr *icmph = &skt->buf->icmph;
     icmph->un.echo.id = client->nextid;
-    icmph->un.echo.sequence = client->punchthru[client->punchthru_idx++];
-
-    client->punchthru_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
+    if (opts.emulation) {
+        icmph->un.echo.sequence = client->nextseq;
+    } else {
+        icmph->un.echo.sequence = client->punchthru[client->punchthru_idx++];
+        client->punchthru_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
+    }
 
     send_echo(skt, client->linkip, framesize);
 }

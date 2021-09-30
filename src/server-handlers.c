@@ -33,10 +33,34 @@
 #include <string.h>
 
 #include "peer.h"
+#include "options.h"
 #include "echo-skt.h"
 #include "tun-device.h"
 #include "protocol.h"
 #include "server-handlers.h"
+
+static void opts_emulation(const struct peer *client)
+{
+    uint16_t sequence = client->skt.buf->icmph.un.echo.sequence;
+    char ip[sizeof("255.255.255.255")];
+
+    if (opts.emulation != 1)
+        return;
+
+    /* first data, keepalive or punchthru (client shouldn't send it) received
+     * with unchanged sequence number meaning that client accepted emulation
+     * option proposal in connection request: make option immutable.
+     */
+    opts.emulation = 2;
+
+    if (client->nextseq == sequence)
+        return;
+
+    inet_ntop(AF_INET, &client->linkip, ip, sizeof(ip));
+    fprintf(stderr, "turn off microsoft ping emulation mode for %s.\n", ip);
+
+    opts.emulation = 0;
+}
 
 void handle_server_data(struct peer *client, int framesize)
 {
@@ -61,11 +85,13 @@ void handle_keep_alive_request(struct peer *client)
     /* write a keep-alive response. */
     struct packet_header *pkth = &skt->buf->pkth;
     memcpy(pkth->magic, PACKET_MAGIC_SERVER, sizeof(pkth->magic));
-    pkth->reserved = 0;
+    pkth->flags = 0;
     pkth->type = PACKET_KEEP_ALIVE;
 
     /* send the response to the client. */
     send_echo(skt, client->linkip, 0);
+
+    opts_emulation(client);
 
     client->seconds = 0;
     client->timeouts = 0;
@@ -80,7 +106,9 @@ void handle_connection_request(struct peer *client)
 
     struct packet_header *pkth = &skt->buf->pkth;
     memcpy(pkth->magic, PACKET_MAGIC_SERVER, sizeof(pkth->magic));
-    pkth->reserved = 0;
+    pkth->flags = 0;
+
+    inet_ntop(AF_INET, &sourceip, ip, sizeof(ip));
 
     /* is a client already connected? */
     if (client->linkip) {
@@ -90,18 +118,31 @@ void handle_connection_request(struct peer *client)
         pkth->type = PACKET_CONNECTION_ACCEPT;
         verdict = "accepting";
 
+        if (pkth->flags & PACKET_F_ICMP_SEQ_EMULATION) {
+            /* client requested: cannot be turned off. */
+            opts.emulation = 2;
+        } else if (opts.emulation) {
+            /* server requested via command line option: can be turned off. */
+            fprintf(stderr, "request microsoft ping emulation on %s.\n", ip);
+        }
+
+        if (opts.emulation)
+            pkth->flags |= PACKET_F_ICMP_SEQ_EMULATION;
+
         /* store the id number. */
         if (!client->strict_nextid)
             client->nextid = id;
 
         client->seconds = 0;
         client->timeouts = 0;
+
+        /* better to start with used sequence number until punchthru. */
+        client->nextseq = skt->buf->icmph.un.echo.sequence;
         client->punchthru_idx = 0;
         client->punchthru_write_idx = 0;
         client->linkip = sourceip;
     }
 
-    inet_ntop(AF_INET, &sourceip, ip, sizeof(ip));
     fprintf(stderr, "%s connection from %s with id %d\n",
             verdict, ip, ntohs(id));
 
@@ -116,11 +157,14 @@ void handle_connection_request(struct peer *client)
 /* handle a punch-thru packet. */
 void handle_punchthru(struct peer *client)
 {
-    /* store the sequence number. */
-    client->punchthru[client->punchthru_write_idx++] =
-        client->skt.buf->icmph.un.echo.sequence;
+    opts_emulation(client);
 
-    client->punchthru_write_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
+    if (!opts.emulation) {
+        /* store the sequence number. */
+        client->punchthru[client->punchthru_write_idx++] =
+            client->skt.buf->icmph.un.echo.sequence;
+        client->punchthru_write_idx %= ICMPTUNNEL_PUNCHTHRU_WINDOW;
+    }
 
     client->seconds = 0;
     client->timeouts = 0;

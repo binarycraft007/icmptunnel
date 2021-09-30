@@ -104,7 +104,7 @@ static void handle_tunnel_data(struct peer *server)
         return;
 
     /* write a data packet. */
-    if (send_message(server, PACKET_DATA, framesize) < 0)
+    if (send_message(server, PACKET_DATA, 0, framesize) < 0)
         return;
 
     if (device->iopkts > 0)

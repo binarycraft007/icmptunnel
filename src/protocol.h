@@ -43,10 +43,15 @@ enum PACKET_TYPE
     PACKET_KEEP_ALIVE
 };
 
+enum PACKET_FLAGS
+{
+    PACKET_F_ICMP_SEQ_EMULATION = (1 << 0),
+};
+
 struct packet_header
 {
     uint8_t magic[sizeof(PACKET_MAGIC_SERVER) - 1];
-    uint8_t reserved;
+    uint8_t flags;
     uint8_t type;
 } __attribute__((packed));
 

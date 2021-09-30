@@ -40,30 +40,31 @@ struct peer
     /* link address. */
     uint32_t linkip;
 
-    /* next icmp id and sequence numbers. */
+    /* next icmp id. */
     uint16_t nextid;
+
     union {
         struct {
-            uint16_t nextseq;
-#define nextseq u1.c.nextseq
+            uint16_t connected;
+#define connected u1.c.connected
         } c;
         struct {
-            uint8_t strict_nextid;
+            uint16_t strict_nextid;
 #define strict_nextid u1.s.strict_nextid
         } s;
     } u1;
 
     union {
         struct {
-            /* connected to server. */
-            uint16_t connected;
-#define connected u2.c.connected
+            /* client or server in emulation mode sequence numbers. */
+            uint16_t nextseq;
+#define nextseq u2.c.nextseq
         } c;
         struct {
             /* punch-thru sequence numbers. */
+            uint16_t punchthru[ICMPTUNNEL_PUNCHTHRU_WINDOW];
             uint16_t punchthru_idx;
             uint16_t punchthru_write_idx;
-            uint16_t punchthru[ICMPTUNNEL_PUNCHTHRU_WINDOW];
 #define punchthru_idx u2.s.punchthru_idx
 #define punchthru_write_idx u2.s.punchthru_write_idx
 #define punchthru u2.s.punchthru

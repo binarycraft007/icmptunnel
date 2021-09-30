@@ -81,6 +81,7 @@ void handle_keep_alive_response(struct peer *server)
 
 void handle_connection_accept(struct peer *server)
 {
+    struct packet_header *pkth = &server->skt.buf->pkth;
     char ip[sizeof("255.255.255.255")];
 
     /* if we're already connected then ignore the packet. */
@@ -88,6 +89,16 @@ void handle_connection_accept(struct peer *server)
         return;
 
     inet_ntop(AF_INET, &server->linkip, ip, sizeof(ip));
+
+    if (pkth->flags & PACKET_F_ICMP_SEQ_EMULATION) {
+        opts.emulation = 1;
+    } else if (opts.emulation > 1) {
+        fprintf(stderr, "turn off microsoft ping emulation mode for %s.\n", ip);
+        opts.emulation = 0;
+    } else {
+        opts.emulation = 0;
+    }
+
     fprintf(stderr, "connection established with %s.\n", ip);
 
     server->connected = 1;
@@ -113,14 +124,17 @@ void handle_server_full(struct peer *server)
     fprintf(stderr, "unable to connect: server is full, retrying.\n");
 }
 
-int send_message(struct peer *server, int pkttype, int size)
+int send_message(struct peer *server, int pkttype, int flags, int size)
 {
     struct echo_skt *skt = &server->skt;
+
+    if (!opts.emulation)
+        server->nextseq = htons(ntohs(server->nextseq) + 1);
 
     /* write a connection request packet. */
     struct packet_header *pkth = &skt->buf->pkth;
     memcpy(pkth->magic, PACKET_MAGIC_CLIENT, sizeof(pkth->magic));
-    pkth->reserved = 0;
+    pkth->flags = flags;
     pkth->type = pkttype;
 
     /* send packet. */
@@ -128,15 +142,17 @@ int send_message(struct peer *server, int pkttype, int size)
     icmph->un.echo.id = server->nextid;
     icmph->un.echo.sequence = server->nextseq;
 
-    if (!opts.emulation)
-        server->nextseq = htons(ntohs(server->nextseq) + 1);
-
     return send_echo(skt, server->linkip, size);
 }
 
 void send_connection_request(struct peer *server)
 {
+    unsigned int flags = opts.emulation ? PACKET_F_ICMP_SEQ_EMULATION : 0;
+
+    /* do not touch nextseq until connection established. */
+    opts.emulation++;
+
     fprintf(stderr, "trying to connect using id %d ...\n",
             htons(server->nextid));
-    send_message(server, PACKET_CONNECTION_REQUEST, 0);
+    send_message(server, PACKET_CONNECTION_REQUEST, flags, 0);
 }
