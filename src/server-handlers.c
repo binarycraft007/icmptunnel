@@ -111,7 +111,7 @@ void handle_connection_request(struct peer *client)
     inet_ntop(AF_INET, &sourceip, ip, sizeof(ip));
 
     /* is a client already connected? */
-    if (client->linkip) {
+    if (client->linkip && client->linkip != sourceip) {
         pkth->type = PACKET_SERVER_FULL;
         verdict = "ignoring";
     } else {
